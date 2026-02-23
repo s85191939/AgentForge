@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import httpx
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
 from agent.core.agent import create_agent
-from agent.core.client import GhostfolioClient
 from agent.tools.auth import get_client
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("agentforge")
 
 
 # ---------------------------------------------------------------------------
@@ -21,11 +34,14 @@ from agent.tools.auth import get_client
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Start-up: create agent. Shutdown: close HTTP client."""
+    logger.info("Starting AgentForge Finance agent...")
     app.state.agent = create_agent()
+    logger.info("Agent ready.")
     yield
     try:
         client = get_client()
         await client.close()
+        logger.info("HTTP client closed.")
     except RuntimeError:
         pass
 
@@ -43,13 +59,29 @@ app = FastAPI(
 
 
 # ---------------------------------------------------------------------------
+# Middleware — request logging with timing
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def request_logging(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+    start = time.time()
+    logger.info(f"[{request_id}] {request.method} {request.url.path}")
+    response = await call_next(request)
+    elapsed = time.time() - start
+    logger.info(f"[{request_id}] completed in {elapsed:.2f}s status={response.status_code}")
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 
 class QueryRequest(BaseModel):
     """User query to the agent."""
-    message: str
-    thread_id: str = "default"
+    message: str = Field(..., min_length=1, max_length=2000)
+    thread_id: str = Field(default="default", min_length=1, max_length=100)
 
 
 class QueryResponse(BaseModel):
@@ -64,8 +96,19 @@ class QueryResponse(BaseModel):
 
 @app.get("/health")
 async def health():
-    """Health check for the agent server."""
-    return {"status": "ok", "service": "agentforge-finance"}
+    """Health check for the agent server and Ghostfolio connectivity."""
+    gf_status = "unknown"
+    try:
+        client = get_client()
+        result = await client.health_check()
+        gf_status = result.get("status", "unknown")
+    except Exception:
+        gf_status = "unreachable"
+    return {
+        "status": "ok",
+        "service": "agentforge-finance",
+        "ghostfolio": gf_status,
+    }
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -76,7 +119,10 @@ async def query(req: QueryRequest):
     try:
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": req.message}]},
-            config={"configurable": {"thread_id": req.thread_id}},
+            config={
+                "configurable": {"thread_id": req.thread_id},
+                "recursion_limit": settings.agent_max_iterations * 2,
+            },
         )
 
         # Extract the final assistant message
@@ -89,8 +135,21 @@ async def query(req: QueryRequest):
 
         return QueryResponse(response=content, thread_id=req.thread_id)
 
+    except httpx.ConnectError:
+        logger.error("Cannot reach Ghostfolio instance")
+        raise HTTPException(
+            status_code=502,
+            detail="Cannot reach Ghostfolio instance. Is it running?",
+        )
+    except RecursionError:
+        logger.error("Agent exceeded max iterations")
+        raise HTTPException(
+            status_code=500,
+            detail="Agent exceeded maximum iterations. Try a simpler query.",
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unhandled error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error processing query.")
 
 
 # ---------------------------------------------------------------------------

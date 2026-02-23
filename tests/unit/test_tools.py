@@ -12,7 +12,7 @@ from agent.tools.portfolio import (
     get_portfolio_holdings,
     get_portfolio_performance,
 )
-from agent.tools.orders import get_orders
+from agent.tools.orders import get_orders, preview_import, import_activities
 from agent.tools.accounts import get_accounts
 from agent.tools.symbols import lookup_symbol
 from agent.tools.user import get_user_settings
@@ -208,3 +208,106 @@ async def test_get_user_settings_tool(setup_client):
     result = await get_user_settings.ainvoke({})
     assert "USD" in result
     assert "Premium" in result
+
+
+# ---------------------------------------------------------------
+# Import tool tests
+# ---------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_preview_import_valid():
+    """preview_import returns a human-readable summary."""
+    import json
+
+    activities = [
+        {
+            "currency": "USD",
+            "dataSource": "YAHOO",
+            "date": "2024-01-15T00:00:00.000Z",
+            "fee": 0,
+            "quantity": 10,
+            "symbol": "AAPL",
+            "type": "BUY",
+            "unitPrice": 185.50,
+        }
+    ]
+    result = await preview_import.ainvoke({"activities_json": json.dumps(activities)})
+    assert "Import Preview" in result
+    assert "AAPL" in result
+    assert "BUY" in result
+
+
+@pytest.mark.asyncio
+async def test_preview_import_invalid_json():
+    """preview_import returns error on invalid JSON."""
+    result = await preview_import.ainvoke({"activities_json": "not json"})
+    assert "Error" in result
+
+
+@pytest.mark.asyncio
+async def test_preview_import_missing_fields():
+    """preview_import returns error on missing required fields."""
+    import json
+
+    activities = [{"symbol": "AAPL", "type": "BUY"}]
+    result = await preview_import.ainvoke({"activities_json": json.dumps(activities)})
+    assert "missing required fields" in result
+
+
+@pytest.mark.asyncio
+async def test_import_activities_requires_confirmation():
+    """import_activities refuses to execute without confirmed=True."""
+    import json
+
+    activities = [
+        {
+            "currency": "USD",
+            "dataSource": "YAHOO",
+            "date": "2024-01-15T00:00:00.000Z",
+            "fee": 0,
+            "quantity": 10,
+            "symbol": "AAPL",
+            "type": "BUY",
+            "unitPrice": 185.50,
+        }
+    ]
+    result = await import_activities.ainvoke({
+        "activities_json": json.dumps(activities),
+        "confirmed": False,
+    })
+    assert "NOT executed" in result
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_import_activities_confirmed(setup_client):
+    """import_activities executes when confirmed=True."""
+    import json
+
+    respx.post("http://localhost:3333/api/v1/auth/anonymous").mock(
+        return_value=httpx.Response(200, json={"authToken": "jwt-test"})
+    )
+    await setup_client.authenticate()
+
+    respx.post("http://localhost:3333/api/v1/import").mock(
+        return_value=httpx.Response(201, json={"activities": []})
+    )
+
+    activities = [
+        {
+            "currency": "USD",
+            "dataSource": "YAHOO",
+            "date": "2024-01-15T00:00:00.000Z",
+            "fee": 0,
+            "quantity": 10,
+            "symbol": "AAPL",
+            "type": "BUY",
+            "unitPrice": 185.50,
+        }
+    ]
+    result = await import_activities.ainvoke({
+        "activities_json": json.dumps(activities),
+        "confirmed": True,
+    })
+    assert "Successfully imported" in result

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent.config.settings import settings
 from agent.core.agent import create_agent
 
 
@@ -34,7 +35,10 @@ async def main() -> None:
         try:
             result = await agent.ainvoke(
                 {"messages": [{"role": "user", "content": user_input}]},
-                config={"configurable": {"thread_id": thread_id}},
+                config={
+                    "configurable": {"thread_id": thread_id},
+                    "recursion_limit": settings.agent_max_iterations * 2,
+                },
             )
 
             messages = result.get("messages", [])

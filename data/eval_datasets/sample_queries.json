@@ -2,14 +2,14 @@
   {
     "id": "eval_001",
     "query": "What are my current holdings?",
-    "expected_tools": ["authenticate", "get_portfolio_holdings"],
+    "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
     "difficulty": "easy"
   },
   {
     "id": "eval_002",
     "query": "How has my portfolio performed this year?",
-    "expected_tools": ["authenticate", "get_portfolio_performance"],
+    "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "ytd"},
     "category": "performance",
     "difficulty": "easy"
@@ -17,21 +17,21 @@
   {
     "id": "eval_003",
     "query": "Am I too concentrated in any single stock?",
-    "expected_tools": ["authenticate", "get_portfolio_details"],
+    "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
     "difficulty": "medium"
   },
   {
     "id": "eval_004",
     "query": "Show me all my dividend transactions from the past year",
-    "expected_tools": ["authenticate", "get_orders"],
+    "expected_tools": ["get_orders"],
     "category": "transaction_history",
     "difficulty": "medium"
   },
   {
     "id": "eval_005",
     "query": "What is the ticker symbol for Tesla?",
-    "expected_tools": ["authenticate", "lookup_symbol"],
+    "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "Tesla"},
     "category": "symbol_lookup",
     "difficulty": "easy"
@@ -39,35 +39,35 @@
   {
     "id": "eval_006",
     "query": "What is my asset allocation breakdown by class?",
-    "expected_tools": ["authenticate", "get_portfolio_details"],
+    "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
     "difficulty": "medium"
   },
   {
     "id": "eval_007",
     "query": "Which of my accounts has the highest value?",
-    "expected_tools": ["authenticate", "get_accounts"],
+    "expected_tools": ["get_accounts"],
     "category": "accounts",
     "difficulty": "easy"
   },
   {
     "id": "eval_008",
     "query": "Compare my 1-year vs 5-year performance",
-    "expected_tools": ["authenticate", "get_portfolio_performance"],
+    "expected_tools": ["get_portfolio_performance"],
     "category": "performance",
     "difficulty": "medium"
   },
   {
     "id": "eval_009",
     "query": "I bought 5 shares of MSFT at $420 on January 10, 2025. Can you record that?",
-    "expected_tools": ["authenticate", "import_activities"],
+    "expected_tools": ["preview_import"],
     "category": "import",
     "difficulty": "medium"
   },
   {
     "id": "eval_010",
     "query": "What percentage of my portfolio is in cryptocurrency?",
-    "expected_tools": ["authenticate", "get_portfolio_details"],
+    "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
     "difficulty": "medium"
   }

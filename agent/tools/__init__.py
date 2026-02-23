@@ -5,7 +5,7 @@ from agent.tools.portfolio import (
     get_portfolio_holdings,
     get_portfolio_performance,
 )
-from agent.tools.orders import get_orders, import_activities
+from agent.tools.orders import get_orders, import_activities, preview_import
 from agent.tools.accounts import get_accounts
 from agent.tools.symbols import lookup_symbol
 from agent.tools.auth import authenticate, health_check
@@ -18,6 +18,7 @@ ALL_TOOLS = [
     get_portfolio_performance,
     get_portfolio_details,
     get_orders,
+    preview_import,
     import_activities,
     get_accounts,
     lookup_symbol,

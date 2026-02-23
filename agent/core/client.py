@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
+import logging
+
 import httpx
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from agent.config.settings import settings
+
+logger = logging.getLogger("agentforge.client")
+
+# Retry policy: 3 attempts with exponential backoff (1s → 10s)
+_retry = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((httpx.ConnectError, httpx.ReadTimeout)),
+    reraise=True,
+)
 
 
 class GhostfolioClient:
@@ -29,19 +47,56 @@ class GhostfolioClient:
 
         Returns the JWT string.
         """
+        logger.info("Authenticating with Ghostfolio...")
         response = await self._http.post(
             "/api/v1/auth/anonymous",
             json={"accessToken": self._security_token},
         )
         response.raise_for_status()
         self._jwt = response.json()["authToken"]
+        logger.info("Authenticated successfully.")
         return self._jwt
 
-    @property
-    def _headers(self) -> dict[str, str]:
+    async def _ensure_authenticated(self) -> None:
+        """Authenticate if no JWT is present."""
         if self._jwt is None:
-            raise RuntimeError("Not authenticated — call authenticate() first.")
+            await self.authenticate()
+
+    async def _get_headers(self) -> dict[str, str]:
+        """Return auth headers, auto-authenticating if needed."""
+        await self._ensure_authenticated()
         return {"Authorization": f"Bearer {self._jwt}"}
+
+    # ------------------------------------------------------------------
+    # Centralized request helper (retry + 401 re-auth)
+    # ------------------------------------------------------------------
+
+    @_retry
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        **kwargs,
+    ) -> httpx.Response:
+        """Make an authenticated request with retry and 401 re-auth.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE).
+            url: API path (e.g., /api/v1/portfolio/holdings).
+            **kwargs: Passed to httpx (params, json, etc.).
+        """
+        headers = await self._get_headers()
+        r = await self._http.request(method, url, headers=headers, **kwargs)
+
+        # If 401, clear JWT, re-authenticate, and retry once
+        if r.status_code == 401:
+            logger.warning("Received 401 — re-authenticating...")
+            self._jwt = None
+            headers = await self._get_headers()
+            r = await self._http.request(method, url, headers=headers, **kwargs)
+
+        r.raise_for_status()
+        return r
 
     # ------------------------------------------------------------------
     # Health
@@ -59,8 +114,7 @@ class GhostfolioClient:
 
     async def get_portfolio_holdings(self) -> dict:
         """GET /api/v1/portfolio/holdings"""
-        r = await self._http.get("/api/v1/portfolio/holdings", headers=self._headers)
-        r.raise_for_status()
+        r = await self._request("GET", "/api/v1/portfolio/holdings")
         return r.json()
 
     async def get_portfolio_performance(self, range_: str = "max") -> dict:
@@ -68,22 +122,20 @@ class GhostfolioClient:
 
         Valid ranges: 1d, wtd, 1w, mtd, 1m, 3m, ytd, 1y, 3y, 5y, max
         """
-        r = await self._http.get(
+        r = await self._request(
+            "GET",
             "/api/v1/portfolio/performance",
-            headers=self._headers,
             params={"range": range_},
         )
-        r.raise_for_status()
         return r.json()
 
     async def get_portfolio_details(self, range_: str = "max") -> dict:
         """GET /api/v1/portfolio/details?range=<range>"""
-        r = await self._http.get(
+        r = await self._request(
+            "GET",
             "/api/v1/portfolio/details",
-            headers=self._headers,
             params={"range": range_},
         )
-        r.raise_for_status()
         return r.json()
 
     # ------------------------------------------------------------------
@@ -92,18 +144,16 @@ class GhostfolioClient:
 
     async def get_orders(self) -> dict:
         """GET /api/v1/order"""
-        r = await self._http.get("/api/v1/order", headers=self._headers)
-        r.raise_for_status()
+        r = await self._request("GET", "/api/v1/order")
         return r.json()
 
     async def import_activities(self, activities: list[dict]) -> dict:
         """POST /api/v1/import — import a list of activity objects."""
-        r = await self._http.post(
+        r = await self._request(
+            "POST",
             "/api/v1/import",
-            headers=self._headers,
             json={"activities": activities},
         )
-        r.raise_for_status()
         return r.json()
 
     # ------------------------------------------------------------------
@@ -112,8 +162,7 @@ class GhostfolioClient:
 
     async def get_accounts(self) -> dict:
         """GET /api/v1/account"""
-        r = await self._http.get("/api/v1/account", headers=self._headers)
-        r.raise_for_status()
+        r = await self._request("GET", "/api/v1/account")
         return r.json()
 
     # ------------------------------------------------------------------
@@ -122,12 +171,11 @@ class GhostfolioClient:
 
     async def lookup_symbol(self, query: str) -> dict:
         """GET /api/v1/symbol/lookup?query=<query>"""
-        r = await self._http.get(
+        r = await self._request(
+            "GET",
             "/api/v1/symbol/lookup",
-            headers=self._headers,
             params={"query": query},
         )
-        r.raise_for_status()
         return r.json()
 
     # ------------------------------------------------------------------
@@ -136,8 +184,7 @@ class GhostfolioClient:
 
     async def get_user(self) -> dict:
         """GET /api/v1/user"""
-        r = await self._http.get("/api/v1/user", headers=self._headers)
-        r.raise_for_status()
+        r = await self._request("GET", "/api/v1/user")
         return r.json()
 
     # ------------------------------------------------------------------

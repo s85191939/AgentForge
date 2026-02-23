@@ -1,5 +1,10 @@
 """Application settings loaded from environment variables."""
 
+from __future__ import annotations
+
+import os
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -24,6 +29,29 @@ class Settings(BaseSettings):
     agent_confidence_threshold: float = 0.7
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @field_validator("ghostfolio_security_token")
+    @classmethod
+    def security_token_not_empty(cls, v: str) -> str:
+        # Skip validation during testing
+        if os.getenv("AGENTFORGE_TESTING") == "1":
+            return v
+        if not v or v == "your-security-token-here":
+            raise ValueError(
+                "GHOSTFOLIO_SECURITY_TOKEN must be set in .env. "
+                "See README for setup instructions."
+            )
+        return v
+
+    @field_validator("openai_api_key")
+    @classmethod
+    def openai_key_not_empty(cls, v: str) -> str:
+        # Skip validation during testing
+        if os.getenv("AGENTFORGE_TESTING") == "1":
+            return v
+        if not v or v.startswith("your-"):
+            raise ValueError("OPENAI_API_KEY must be set in .env.")
+        return v
 
 
 settings = Settings()
