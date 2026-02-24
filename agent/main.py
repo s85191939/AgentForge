@@ -10,15 +10,24 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import ToolMessage
 from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
 from agent.core.agent import create_agent
-from agent.core.auth_middleware import get_current_user
+from agent.core.database import (
+    close_db,
+    create_thread,
+    delete_thread,
+    init_db,
+    is_available,
+    list_threads,
+    load_messages,
+    save_message,
+)
 from agent.core.formatter import format_response
 from agent.core.verification import verify_response
 from agent.tools.auth import get_client
@@ -35,16 +44,18 @@ logger = logging.getLogger("agentforge")
 
 
 # ---------------------------------------------------------------------------
-# Lifespan — initialise / teardown the Ghostfolio client
+# Lifespan — initialise / teardown the Ghostfolio client + database
 # ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Start-up: create agent. Shutdown: close HTTP client."""
+    """Start-up: create agent, init database. Shutdown: close connections."""
     logger.info("Starting AgentForge Finance agent...")
+    await init_db(settings.database_url or None)
     app.state.agent = create_agent()
     logger.info("Agent ready.")
     yield
+    await close_db()
     try:
         client = get_client()
         await client.close()
@@ -121,7 +132,7 @@ class QueryResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Public Routes (no auth required)
+# Public Routes
 # ---------------------------------------------------------------------------
 
 @app.get("/")
@@ -132,7 +143,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check for the agent server and Ghostfolio connectivity."""
+    """Health check for the agent server, Ghostfolio, and database."""
     gf_status = "unknown"
     try:
         client = get_client()
@@ -144,15 +155,56 @@ async def health():
         "status": "ok",
         "service": "agentforge-finance",
         "ghostfolio": gf_status,
+        "database": "connected" if is_available() else "unavailable",
     }
 
 
 # ---------------------------------------------------------------------------
-# Authenticated Routes
+# Thread Management API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/threads")
+async def get_threads():
+    """List all chat threads, most recently updated first."""
+    threads = await list_threads()
+    return {"threads": threads}
+
+
+@app.post("/api/threads")
+async def new_thread():
+    """Create a new chat thread."""
+    thread = await create_thread()
+    if thread is None:
+        # DB unavailable — return a local-only thread ID
+        return {
+            "id": str(uuid.uuid4()),
+            "title": "New Chat",
+            "created_at": "",
+            "updated_at": "",
+        }
+    return thread
+
+
+@app.get("/api/threads/{thread_id}/messages")
+async def get_messages(thread_id: str):
+    """Load all messages for a thread."""
+    messages = await load_messages(thread_id)
+    return {"messages": messages}
+
+
+@app.delete("/api/threads/{thread_id}")
+async def remove_thread(thread_id: str):
+    """Delete a thread and all its messages."""
+    await delete_thread(thread_id)
+    return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# Portfolio Summary
 # ---------------------------------------------------------------------------
 
 @app.get("/api/portfolio-summary")
-async def portfolio_summary(user: dict = Depends(get_current_user)):
+async def portfolio_summary():
     """Return raw portfolio data for the dashboard sidebar and ticker."""
     try:
         client = get_client()
@@ -167,14 +219,15 @@ async def portfolio_summary(user: dict = Depends(get_current_user)):
         return {"holdings": [], "performance": {}, "error": str(e)}
 
 
-@app.post("/query", response_model=QueryResponse)
-async def query(req: QueryRequest, user: dict = Depends(get_current_user)):
-    """Send a natural language query to the finance agent."""
-    uid = user["uid"]
-    agent = app.state.agent
+# ---------------------------------------------------------------------------
+# Agent Query
+# ---------------------------------------------------------------------------
 
-    # Namespace thread_id per user for LangGraph isolation
-    langgraph_thread_id = f"{uid}_{req.thread_id}"
+@app.post("/query", response_model=QueryResponse)
+async def query(req: QueryRequest):
+    """Send a natural language query to the finance agent."""
+    agent = app.state.agent
+    langgraph_thread_id = req.thread_id
 
     try:
         result = await agent.ainvoke(
@@ -219,6 +272,21 @@ async def query(req: QueryRequest, user: dict = Depends(get_current_user)):
         # Format response with citations and confidence
         tool_names = [tc.tool for tc in tools_called]
         formatted = format_response(content, tool_names, tool_results or None)
+
+        # Persist messages to Postgres (if available)
+        if is_available():
+            await save_message(req.thread_id, "user", req.message)
+            await save_message(
+                req.thread_id,
+                "agent",
+                content,
+                metadata={
+                    "tools_called": [tc.model_dump() for tc in tools_called],
+                    "verification": {"passed": vr.passed, "warnings": vr.warnings},
+                    "citations": formatted.citations,
+                    "confidence": formatted.confidence,
+                },
+            )
 
         return QueryResponse(
             response=content,

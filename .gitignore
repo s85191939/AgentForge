@@ -43,5 +43,8 @@ docker/ghostfolio-data/
 # Persistent data (SQLite checkpoints)
 .data/
 
+# Node.js (not used — cleanup artifact)
+node_modules/
+
 # Misc
 *.log

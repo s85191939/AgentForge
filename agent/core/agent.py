@@ -71,9 +71,9 @@ def create_agent(
         temperature=0,
     )
 
-    # In-memory checkpointer — Firestore handles cross-session persistence
+    # In-memory checkpointer — Postgres handles cross-session persistence
     checkpointer = MemorySaver()
-    logger.info("Agent created with in-memory checkpointer (Firestore handles persistence)")
+    logger.info("Agent created with in-memory checkpointer (Postgres handles persistence)")
 
     # Build the ReAct agent via LangGraph
     agent = create_react_agent(

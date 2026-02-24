@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     langchain_api_key: str = ""
     langchain_project: str = "agentforge-finance"
 
-    # Firebase
-    firebase_project_id: str = "agentforge-86e27"
+    # Database (shared Ghostfolio Postgres — for chat persistence)
+    database_url: str = ""
 
     # Agent
     agent_max_iterations: int = 10
