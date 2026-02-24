@@ -19,9 +19,9 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="module")
-def agent():
+async def agent():
     """Create a shared agent for all integration tests."""
-    return create_agent()
+    return await create_agent()
 
 
 @pytest.mark.asyncio

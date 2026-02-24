@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import pathlib
+
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.prebuilt import create_react_agent
 
 from agent.config.settings import settings
 from agent.core.client import GhostfolioClient
 from agent.tools import ALL_TOOLS
 from agent.tools.auth import set_client
+
+logger = logging.getLogger("agentforge.agent")
 
 SYSTEM_PROMPT = """You are a financial portfolio intelligence assistant powered by Ghostfolio.
 
@@ -40,7 +45,19 @@ You have access to a live Ghostfolio instance via REST API tools.
 """
 
 
-def create_agent(
+def _get_db_path() -> str:
+    """Return the path for the SQLite checkpoint database."""
+    # Use /data if it exists (Railway persistent volume), else local .data dir
+    data_dir = pathlib.Path("/data")
+    if not data_dir.exists():
+        data_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+    db_path = str(data_dir / "memory.db")
+    logger.info(f"Checkpoint DB: {db_path}")
+    return db_path
+
+
+async def create_agent(
     base_url: str | None = None,
     security_token: str | None = None,
 ):
@@ -67,8 +84,10 @@ def create_agent(
         temperature=0,
     )
 
-    # In-memory checkpointer for multi-turn conversations
-    checkpointer = MemorySaver()
+    # Persistent SQLite checkpointer for cross-session memory
+    db_path = _get_db_path()
+    checkpointer = AsyncSqliteSaver.from_conn_string(db_path)
+    await checkpointer.setup()
 
     # Build the ReAct agent via LangGraph
     agent = create_react_agent(

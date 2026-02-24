@@ -45,7 +45,7 @@ async def run_eval(
     output_path: str | None = None,
 ) -> list[dict]:
     """Execute eval queries and return results."""
-    agent = create_agent()
+    agent = await create_agent()
 
     with open(EVAL_DATA) as f:
         queries = json.load(f)

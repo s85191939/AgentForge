@@ -16,7 +16,7 @@ async def main() -> None:
     print("=" * 60)
     print()
 
-    agent = create_agent()
+    agent = await create_agent()
     thread_id = "cli-session"
 
     while True:

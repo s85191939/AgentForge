@@ -13,10 +13,13 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from langchain_core.messages import ToolMessage
 from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
 from agent.core.agent import create_agent
+from agent.core.formatter import format_response
+from agent.core.verification import verify_response
 from agent.tools.auth import get_client
 
 # ---------------------------------------------------------------------------
@@ -38,7 +41,7 @@ logger = logging.getLogger("agentforge")
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Start-up: create agent. Shutdown: close HTTP client."""
     logger.info("Starting AgentForge Finance agent...")
-    app.state.agent = create_agent()
+    app.state.agent = await create_agent()
     logger.info("Agent ready.")
     yield
     try:
@@ -94,10 +97,26 @@ class QueryRequest(BaseModel):
     thread_id: str = Field(default="default", min_length=1, max_length=100)
 
 
+class ToolCallInfo(BaseModel):
+    """Info about a tool call made during agent reasoning."""
+    tool: str
+    result_preview: str = ""
+
+
+class VerificationInfo(BaseModel):
+    """Verification check results."""
+    passed: bool = True
+    warnings: list[str] = []
+
+
 class QueryResponse(BaseModel):
-    """Agent response."""
+    """Agent response with debug info."""
     response: str
     thread_id: str
+    tools_called: list[ToolCallInfo] = []
+    verification: VerificationInfo = VerificationInfo()
+    citations: list[str] = []
+    confidence: str = "medium"
 
 
 # ---------------------------------------------------------------------------
@@ -157,15 +176,52 @@ async def query(req: QueryRequest):
             },
         )
 
-        # Extract the final assistant message
+        # Extract the final assistant message and tool call info
         messages = result.get("messages", [])
+
+        # Collect tool calls and results for debug panel
+        tools_called: list[ToolCallInfo] = []
+        tool_results: list[str] = []
+        for m in messages:
+            if isinstance(m, ToolMessage):
+                preview = (m.content or "")[:200]
+                tools_called.append(ToolCallInfo(
+                    tool=m.name or "unknown",
+                    result_preview=preview,
+                ))
+                tool_results.append(m.content or "")
+            if hasattr(m, "tool_calls"):
+                for tc in m.tool_calls:
+                    name = tc.get("name", "unknown")
+                    # Avoid duplicates — tool_calls appear before ToolMessage
+                    if not any(t.tool == name for t in tools_called):
+                        tools_called.append(ToolCallInfo(tool=name))
+
         if messages:
             final = messages[-1]
             content = final.content if hasattr(final, "content") else str(final)
         else:
             content = "No response generated."
 
-        return QueryResponse(response=content, thread_id=req.thread_id)
+        # Run domain-specific verification checks
+        vr = verify_response(content, tool_results or None)
+        content = vr.cleaned_response  # May have disclaimer appended
+
+        # Format response with citations and confidence
+        tool_names = [tc.tool for tc in tools_called]
+        formatted = format_response(content, tool_names, tool_results or None)
+
+        return QueryResponse(
+            response=content,
+            thread_id=req.thread_id,
+            tools_called=tools_called,
+            verification=VerificationInfo(
+                passed=vr.passed,
+                warnings=vr.warnings,
+            ),
+            citations=formatted.citations,
+            confidence=formatted.confidence,
+        )
 
     except httpx.ConnectError:
         logger.error("Cannot reach Ghostfolio instance")

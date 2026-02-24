@@ -40,5 +40,8 @@ langsmith_traces/
 # Docker
 docker/ghostfolio-data/
 
+# Persistent data (SQLite checkpoints)
+.data/
+
 # Misc
 *.log

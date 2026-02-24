@@ -235,6 +235,60 @@
       font-family: var(--mono); transition: opacity 0.3s;
     }
 
+    /* Debug panel (tool calls) */
+    .debug-toggle {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 8px; padding: 3px 8px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 3px; cursor: pointer;
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-muted); transition: all 0.15s;
+    }
+    .debug-toggle:hover { border-color: var(--blue); color: var(--blue); }
+    .debug-toggle .arrow { font-size: 8px; transition: transform 0.2s; }
+    .debug-toggle.open .arrow { transform: rotate(90deg); }
+    .debug-panel {
+      display: none; margin-top: 6px; padding: 8px 10px;
+      background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+      border-radius: 3px; font-family: var(--mono); font-size: 10.5px;
+    }
+    .debug-panel.open { display: block; }
+    .debug-tool {
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 0; color: var(--text-secondary);
+    }
+    .debug-tool-name { color: var(--blue); font-weight: 600; }
+    .debug-tool-preview {
+      color: var(--text-muted); font-size: 10px;
+      max-width: 400px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .debug-check { color: var(--green); font-size: 9px; }
+    .debug-warn { color: var(--amber); font-size: 9px; }
+    .verify-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      margin-left: 8px; padding: 2px 6px;
+      border-radius: 3px; font-size: 9px;
+      font-family: var(--mono); font-weight: 600;
+    }
+    .verify-badge.pass { background: rgba(0,230,118,0.08); color: var(--green); }
+    .verify-badge.warn { background: rgba(255,171,0,0.08); color: var(--amber); }
+    .conf-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      margin-left: 6px; padding: 2px 6px;
+      border-radius: 3px; font-size: 9px;
+      font-family: var(--mono); font-weight: 600;
+    }
+    .conf-badge.high { background: rgba(0,230,118,0.08); color: var(--green); }
+    .conf-badge.medium { background: rgba(64,196,255,0.08); color: var(--blue); }
+    .conf-badge.low { background: rgba(255,171,0,0.08); color: var(--amber); }
+    .citations {
+      margin-top: 4px; padding: 0;
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-muted);
+    }
+    .citations span { color: var(--text-secondary); }
+
     /* Welcome */
     .welcome { text-align: center; padding: 60px 24px 16px; }
     .welcome-g { font-size: 40px; margin-bottom: 16px; opacity: 0.25; color: var(--green); }
@@ -366,7 +420,9 @@
 
 <script>
 const API = window.location.origin;
-const threadId = 'web-' + Math.random().toString(36).substring(2, 10);
+// Persist thread ID in localStorage so memory survives page reloads
+const threadId = localStorage.getItem('af-thread-id') || ('web-' + Math.random().toString(36).substring(2, 10));
+localStorage.setItem('af-thread-id', threadId);
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -536,18 +592,69 @@ function fmtLine(l) {
 }
 
 // Messages
-function addMessage(text, type) {
+function addMessage(text, type, debugInfo) {
   if (welcome) welcome.style.display = 'none';
   const div = document.createElement('div');
   div.className = 'message ' + type;
   if (type === 'agent') {
-    div.innerHTML = '<div class="content">' + formatResponse(text).replace(/\n/g, '<br>') + '</div>';
+    let html = '<div class="content">' + formatResponse(text).replace(/\n/g, '<br>') + '</div>';
+
+    // Add debug panel with tool calls + verification
+    if (debugInfo && debugInfo.tools_called && debugInfo.tools_called.length > 0) {
+      const tools = debugInfo.tools_called;
+      const v = debugInfo.verification || {};
+      const vPass = v.passed !== false;
+      const badgeClass = vPass ? 'pass' : 'warn';
+      const badgeText = vPass ? 'VERIFIED' : 'WARNING';
+      const uid = 'dbg-' + Math.random().toString(36).substr(2, 6);
+
+      // Confidence badge
+      const conf = debugInfo.confidence || 'medium';
+      const confLabel = conf.toUpperCase();
+
+      html += '<div class="debug-toggle" onclick="toggleDebug(\'' + uid + '\', this)">' +
+        '<span class="arrow">&#9654;</span> ' +
+        tools.length + ' tool' + (tools.length > 1 ? 's' : '') + ' called' +
+        '<span class="verify-badge ' + badgeClass + '">' + badgeText + '</span>' +
+        '<span class="conf-badge ' + conf + '">&#9679; ' + confLabel + '</span></div>';
+
+      html += '<div class="debug-panel" id="' + uid + '">';
+      tools.forEach(t => {
+        html += '<div class="debug-tool">' +
+          '<span class="debug-check">&#10003;</span>' +
+          '<span class="debug-tool-name">' + t.tool + '</span>';
+        if (t.result_preview) {
+          html += '<span class="debug-tool-preview">' +
+            t.result_preview.substring(0, 120).replace(/</g, '&lt;') + '</span>';
+        }
+        html += '</div>';
+      });
+      if (v.warnings && v.warnings.length > 0) {
+        v.warnings.forEach(w => {
+          html += '<div class="debug-tool"><span class="debug-warn">&#9888;</span> ' +
+            w.replace(/</g, '&lt;') + '</div>';
+        });
+      }
+      // Citations
+      const cites = debugInfo.citations || [];
+      if (cites.length > 0) {
+        html += '<div class="citations">Sources: <span>' + cites.join(', ') + '</span></div>';
+      }
+      html += '</div>';
+    }
+
+    div.innerHTML = html;
   } else {
     div.textContent = text;
   }
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+function toggleDebug(id, el) {
+  const panel = document.getElementById(id);
+  if (panel) { panel.classList.toggle('open'); el.classList.toggle('open'); }
 }
 
 // Thinking indicator
@@ -596,7 +703,12 @@ async function sendMessage() {
       addMessage('ERR: ' + (err.detail || 'Something went wrong'), 'error');
     } else {
       const data = await r.json();
-      addMessage(data.response, 'agent');
+      addMessage(data.response, 'agent', {
+        tools_called: data.tools_called || [],
+        verification: data.verification || {},
+        citations: data.citations || [],
+        confidence: data.confidence || 'medium',
+      });
       loadSummary();
     }
   } catch (e) {

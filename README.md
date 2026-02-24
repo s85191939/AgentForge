@@ -142,8 +142,10 @@ AgentForge/
 │   ├── config/
 │   │   └── settings.py        # Pydantic settings (env vars)
 │   ├── core/
-│   │   ├── agent.py           # LangGraph ReAct agent + MemorySaver
-│   │   └── client.py          # Ghostfolio HTTP client (auto-auth, retry)
+│   │   ├── agent.py           # LangGraph ReAct agent + AsyncSqliteSaver
+│   │   ├── client.py          # Ghostfolio HTTP client (auto-auth, retry)
+│   │   ├── verification.py    # Domain-specific response verification
+│   │   └── formatter.py       # Output formatter (citations + confidence)
 │   ├── tools/
 │   │   ├── __init__.py        # ALL_TOOLS export (11 tools)
 │   │   ├── auth.py            # authenticate, health_check
@@ -199,8 +201,45 @@ Write operations (importing activities) require a two-step process:
 1. Call `preview_import` to validate and preview the data
 2. Call `import_activities` with `confirmed=True` to execute
 
-### Multi-Turn Memory
-Uses LangGraph's `MemorySaver` checkpointer — each `thread_id` maintains its own conversation history.
+### Persistent Memory
+Uses LangGraph's `AsyncSqliteSaver` checkpointer backed by SQLite — conversation history persists across server restarts. Each `thread_id` maintains its own isolated conversation history.
+
+### Verification Layer
+Every response runs through domain-specific checks: numeric consistency (allocation sums), prohibited financial advice detection, and tool-data completeness verification.
+
+### Output Formatter
+Responses include data source citations (which Ghostfolio endpoints provided the data) and a confidence level (high/medium/low) based on tool coverage and data quality.
+
+## Core Agent Architecture
+
+| Component | Status | Description |
+|---|---|---|
+| **Reasoning Engine** | LangGraph ReAct | GPT-4o with autonomous reason-act-observe loop |
+| **Tool Registry** | 11 tools | Auto-discovered, type-safe Ghostfolio API tools |
+| **Memory System** | SQLite persistent | Cross-session conversation history via `AsyncSqliteSaver` |
+| **Orchestrator** | FastAPI | Async HTTP server with middleware, error handling, health checks |
+| **Verification Layer** | 3 check types | Numeric consistency, prohibited advice, tool-data completeness |
+| **Output Formatter** | Citations + confidence | Data source attribution and confidence estimation |
+
+## Evaluation Suite
+
+The eval dataset (`data/eval_datasets/sample_queries.json`) contains **70 queries** across 9 categories with difficulty ratings. See the [Eval Dataset README](data/eval_datasets/README.md) for full schema documentation.
+
+```bash
+# Run all evaluations
+python tests/eval/run_eval.py
+
+# Filter by category or difficulty
+python tests/eval/run_eval.py --category performance
+python tests/eval/run_eval.py --difficulty hard
+
+# Export results to JSON
+python tests/eval/run_eval.py --output eval_results.json
+```
+
+**Eval categories:** `portfolio_read`, `performance`, `transactions`, `search`, `accounts`, `import`, `general`, `edge_case`, `multi_tool`
+
+**Scoring:** Tool match accuracy (did the agent call the right tools?) + keyword match (does the response contain expected terms?) + latency tracking.
 
 ## Testing
 
@@ -212,7 +251,7 @@ python -m pytest tests/unit -v
 # Run integration tests (requires live Ghostfolio)
 python -m pytest tests/integration -v -m integration
 
-# Run evaluation suite
+# Run evaluation suite (see above)
 python tests/eval/run_eval.py
 ```
 
