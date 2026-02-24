@@ -26,6 +26,7 @@ from agent.core.database import (
     is_available,
     list_threads,
     load_messages,
+    rename_thread,
     save_message,
 )
 from agent.core.formatter import format_response
@@ -170,15 +171,21 @@ async def get_threads():
     return {"threads": threads}
 
 
+class CreateThreadRequest(BaseModel):
+    """Optional title when creating a thread."""
+    title: str = "New Chat"
+
+
 @app.post("/api/threads")
-async def new_thread():
+async def new_thread(req: CreateThreadRequest | None = None):
     """Create a new chat thread."""
-    thread = await create_thread()
+    title = (req.title.strip() if req and req.title else "New Chat") or "New Chat"
+    thread = await create_thread(title=title)
     if thread is None:
         # DB unavailable — return a local-only thread ID
         return {
             "id": str(uuid.uuid4()),
-            "title": "New Chat",
+            "title": title,
             "created_at": "",
             "updated_at": "",
         }
@@ -190,6 +197,20 @@ async def get_messages(thread_id: str):
     """Load all messages for a thread."""
     messages = await load_messages(thread_id)
     return {"messages": messages}
+
+
+class RenameRequest(BaseModel):
+    """Rename a chat thread."""
+    title: str = Field(..., min_length=1, max_length=100)
+
+
+@app.patch("/api/threads/{thread_id}")
+async def update_thread(thread_id: str, req: RenameRequest):
+    """Rename a chat thread."""
+    ok = await rename_thread(thread_id, req.title.strip())
+    if not ok:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return {"id": thread_id, "title": req.title.strip()}
 
 
 @app.delete("/api/threads/{thread_id}")

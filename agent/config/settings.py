@@ -15,9 +15,13 @@ class Settings(BaseSettings):
     ghostfolio_base_url: str = "http://localhost:3333"
     ghostfolio_security_token: str = ""
 
-    # OpenAI / LLM
+    # OpenAI / LLM (supports OpenRouter via base_url override)
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
+    openai_base_url: str = ""  # Set to "https://openrouter.ai/api/v1" for OpenRouter
+
+    # OpenRouter fallback (used when OpenAI rate-limits)
+    openrouter_api_key: str = ""  # Set to enable automatic fallback on 429
 
     # LangSmith
     langchain_tracing_v2: bool = True

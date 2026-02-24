@@ -43,8 +43,13 @@ async def run_eval(
     category: str | None = None,
     difficulty: str | None = None,
     output_path: str | None = None,
+    delay: float = 2.0,
 ) -> list[dict]:
-    """Execute eval queries and return results."""
+    """Execute eval queries and return results.
+
+    Args:
+        delay: Seconds to wait between queries to avoid rate limits (default 2s).
+    """
     agent = create_agent()
 
     with open(EVAL_DATA) as f:
@@ -131,6 +136,10 @@ async def run_eval(
             })
             print(f"ERROR [{query_time:.1f}s]")
 
+        # Throttle to avoid rate limits
+        if delay > 0 and i < len(queries):
+            await asyncio.sleep(delay)
+
     total_time = time.time() - start_time
 
     # Print summary
@@ -216,6 +225,10 @@ if __name__ == "__main__":
         help="Filter by difficulty",
     )
     parser.add_argument("--output", help="Write JSON results to file")
+    parser.add_argument(
+        "--delay", type=float, default=2.0,
+        help="Seconds between queries to avoid rate limits (default 2.0, 0 to disable)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -226,4 +239,5 @@ if __name__ == "__main__":
         category=args.category,
         difficulty=args.difficulty,
         output_path=args.output,
+        delay=args.delay,
     ))

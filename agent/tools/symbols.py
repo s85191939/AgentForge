@@ -22,6 +22,10 @@ async def lookup_symbol(query: str) -> str:
     - Data source
     - Currency
 
+    IMPORTANT: This tool does NOT return the current market price.
+    For prices, use get_portfolio_holdings instead (which includes
+    marketPrice for all positions in the portfolio).
+
     Use this when the user mentions a stock, ETF, crypto, or other
     asset and you need to look up its details or verify it exists
     in Ghostfolio's data sources.

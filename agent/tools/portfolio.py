@@ -11,16 +11,21 @@ from agent.tools.auth import get_client
 
 @tool
 async def get_portfolio_holdings() -> str:
-    """Retrieve current portfolio holdings with market values.
+    """Retrieve current portfolio holdings with market values and live prices.
 
     Returns all positions the user currently holds, including:
     - Symbol and name
     - Asset class and sub-class
+    - Current market price (live)
     - Quantity and current market value
     - Currency and allocation percentage
+    - Net performance percentage
 
-    Use this when the user asks about what they own, their positions,
-    or wants a breakdown of their portfolio.
+    Use this when the user asks about:
+    - What they own / their positions
+    - The PRICE of any stock or asset in their portfolio
+    - A breakdown of their portfolio
+    This is the ONLY tool that returns current market prices.
     """
     client = get_client()
     data = await client.get_portfolio_holdings()

@@ -174,7 +174,16 @@
       background: rgba(0,230,118,0.06); color: var(--green);
       border: 1px solid rgba(0,230,118,0.12);
     }
-    .thread-item .thread-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .thread-item .thread-label {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+      cursor: pointer; padding: 1px 2px; border-radius: 2px;
+    }
+    .thread-item .thread-label:hover { background: rgba(255,255,255,0.04); }
+    .thread-item .thread-label-input {
+      flex: 1; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.25);
+      border-radius: 2px; color: var(--green); font-family: var(--mono); font-size: 10.5px;
+      padding: 1px 4px; outline: none; min-width: 0;
+    }
     .thread-item .thread-count {
       font-size: 9px; color: var(--text-muted); margin-left: 6px; flex-shrink: 0;
     }
@@ -511,17 +520,64 @@ function renderThreadList() {
   const list = document.getElementById('thread-list');
   if (!list) return;
   list.innerHTML = '';
-  allThreads.forEach((t, i) => {
+  allThreads.forEach((t) => {
     const div = document.createElement('div');
     div.className = 'thread-item' + (t.id === currentThreadId ? ' active' : '');
     const count = t.message_count || 0;
-    const label = count > 0 ? 'Chat ' + (allThreads.length - i) : 'New Chat';
-    div.innerHTML =
-      '<span class="thread-label">' + label + '</span>' +
-      '<span class="thread-count">' + (count > 0 ? count + ' msgs' : '') + '</span>';
+    const label = t.title || 'New Chat';
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'thread-label';
+    labelSpan.textContent = label;
+    // Click label to rename (inline edit)
+    labelSpan.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startRenameThread(t.id, div, label);
+    });
+    const countSpan = document.createElement('span');
+    countSpan.className = 'thread-count';
+    countSpan.textContent = count > 0 ? count + ' msgs' : '';
+    div.appendChild(labelSpan);
+    div.appendChild(countSpan);
     div.onclick = () => switchThread(t.id);
     list.appendChild(div);
   });
+}
+
+function startRenameThread(threadId, rowDiv, currentLabel) {
+  // Replace label span with an input
+  const labelSpan = rowDiv.querySelector('.thread-label');
+  if (!labelSpan || rowDiv.querySelector('.thread-label-input')) return;
+  const inp = document.createElement('input');
+  inp.className = 'thread-label-input';
+  inp.value = currentLabel;
+  inp.maxLength = 100;
+  labelSpan.replaceWith(inp);
+  inp.focus();
+  inp.select();
+
+  const commit = async () => {
+    const newTitle = inp.value.trim() || currentLabel;
+    // Update local state
+    const thread = allThreads.find(t => t.id === threadId);
+    if (thread) thread.title = newTitle;
+    // Persist to backend
+    try {
+      await fetch(API + '/api/threads/' + threadId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+    } catch (e) { console.warn('Rename failed:', e); }
+    renderThreadList();
+  };
+
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { inp.value = currentLabel; inp.blur(); }
+  });
+  // Prevent row click from switching thread while editing
+  inp.addEventListener('click', (e) => e.stopPropagation());
 }
 
 async function switchThread(threadId) {
@@ -531,16 +587,30 @@ async function switchThread(threadId) {
   await loadMessages();
 }
 
+function nextChatTitle() {
+  // Generate unique title: "New Chat", "New Chat 2", "New Chat 3", ...
+  const existing = new Set(allThreads.map(t => (t.title || '').trim()));
+  if (!existing.has('New Chat')) return 'New Chat';
+  for (let i = 2; i < 999; i++) {
+    const candidate = 'New Chat ' + i;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return 'New Chat';
+}
+
 async function createNewThread() {
+  const title = nextChatTitle();
   try {
-    const r = await fetch(API + '/api/threads', { method: 'POST' });
+    const r = await fetch(API + '/api/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: title }),
+    });
     const thread = await r.json();
     currentThreadId = thread.id;
-    // Add to front of thread list
-    allThreads.unshift({ id: thread.id, title: thread.title || 'New Chat', message_count: 0 });
+    allThreads.unshift({ id: thread.id, title: thread.title || title, message_count: 0 });
     renderThreadList();
   } catch (e) {
-    // Fallback: generate local ID (no persistence)
     currentThreadId = 'local-' + Math.random().toString(36).substring(2, 10);
   }
   // Reset chat UI

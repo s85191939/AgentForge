@@ -39,6 +39,12 @@ Rules you MUST follow:
 8. Present numbers clearly — use currency symbols, percentages, and proper formatting.
 9. If a tool call fails, explain what happened and suggest alternatives.
 10. Keep responses concise but thorough.
+11. When asked about the PRICE of a stock or asset, ALWAYS use get_portfolio_holdings first.
+    Holdings data includes the current marketPrice for every position in the portfolio.
+    Only fall back to lookup_symbol if the asset is NOT in the portfolio — and note that
+    lookup_symbol returns metadata only (name, exchange, asset class) but NOT the live price.
+    If the user asks for a price of something not in their portfolio, explain that you can
+    only provide live prices for assets currently held in the portfolio.
 
 You have access to a live Ghostfolio instance via REST API tools.
 """
@@ -64,12 +70,31 @@ def create_agent(
     )
     set_client(client)
 
-    # Create the LLM
-    llm = ChatOpenAI(
-        model=settings.openai_model,
-        api_key=settings.openai_api_key,
-        temperature=0,
-    )
+    # Create the LLM (supports OpenRouter via base_url override)
+    llm_kwargs: dict = {
+        "model": settings.openai_model,
+        "api_key": settings.openai_api_key,
+        "temperature": 0,
+    }
+    if settings.openai_base_url:
+        llm_kwargs["base_url"] = settings.openai_base_url
+        logger.info(f"Using custom LLM base URL: {settings.openai_base_url}")
+    llm = ChatOpenAI(**llm_kwargs)
+
+    # If OpenRouter key is set, add it as a fallback for rate limits
+    if settings.openrouter_api_key:
+        openrouter_model = settings.openai_model
+        # Prefix model name for OpenRouter if not already prefixed
+        if "/" not in openrouter_model:
+            openrouter_model = f"openai/{openrouter_model}"
+        fallback_llm = ChatOpenAI(
+            model=openrouter_model,
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=0,
+        )
+        llm = llm.with_fallbacks([fallback_llm])
+        logger.info("OpenRouter fallback enabled for rate-limit resilience")
 
     # In-memory checkpointer — Postgres handles cross-session persistence
     checkpointer = MemorySaver()

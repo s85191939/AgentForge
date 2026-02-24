@@ -128,6 +128,19 @@ async def list_threads() -> list[dict]:
     ]
 
 
+async def rename_thread(thread_id: str, title: str) -> bool:
+    """Rename a thread. Returns True if updated."""
+    if not _pool:
+        return False
+    async with _pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE agentforge_threads SET title = $1, updated_at = NOW()"
+            " WHERE id = $2",
+            title, thread_id,
+        )
+    return result == "UPDATE 1"
+
+
 async def delete_thread(thread_id: str) -> bool:
     """Delete a thread and its messages. Returns True if deleted."""
     if not _pool:
