@@ -70,5 +70,333 @@
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
     "difficulty": "medium"
+  },
+  {
+    "id": "eval_011",
+    "query": "Show me my portfolio summary",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_012",
+    "query": "How much Apple stock do I own?",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_013",
+    "query": "What is my total portfolio value?",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_014",
+    "query": "List all stocks I currently hold",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_015",
+    "query": "Do I own any ETFs?",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_016",
+    "query": "What is my portfolio return over the last month?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "1m"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_017",
+    "query": "Show me my portfolio performance for the past 3 months",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "3m"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_018",
+    "query": "What was my all-time portfolio performance?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "max"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_019",
+    "query": "How did my portfolio do this week?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "1w"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_020",
+    "query": "Am I up or down today?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "1d"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_021",
+    "query": "Show me all my buy transactions",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_022",
+    "query": "When did I last sell a stock?",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_023",
+    "query": "How many transactions have I made this year?",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_024",
+    "query": "Show me my complete transaction history",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_025",
+    "query": "What was my largest single purchase?",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_026",
+    "query": "Look up the ticker for NVIDIA",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "NVIDIA"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_027",
+    "query": "Find the stock symbol for Amazon",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "Amazon"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_028",
+    "query": "What's the symbol for Vanguard Total Stock Market ETF?",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "Vanguard Total Stock Market"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_029",
+    "query": "Search for bond ETFs",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "bond ETF"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_030",
+    "query": "Is there a ticker for Bitcoin?",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "Bitcoin"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_031",
+    "query": "List all my investment accounts",
+    "expected_tools": ["get_accounts"],
+    "category": "accounts",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_032",
+    "query": "How many accounts do I have?",
+    "expected_tools": ["get_accounts"],
+    "category": "accounts",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_033",
+    "query": "Show me the details of my accounts",
+    "expected_tools": ["get_accounts"],
+    "category": "accounts",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_034",
+    "query": "What is my equity vs bond allocation?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "allocation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_035",
+    "query": "Which sector am I most invested in?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "allocation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_036",
+    "query": "What percentage of my portfolio is in tech stocks?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "allocation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_037",
+    "query": "Show me my portfolio diversification breakdown",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "allocation",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_038",
+    "query": "Am I properly diversified across asset classes?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "risk_analysis",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_039",
+    "query": "What is my biggest position by weight?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "risk_analysis",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_040",
+    "query": "Do I have too much exposure to any single sector?",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "risk_analysis",
+    "difficulty": "hard"
+  },
+  {
+    "id": "eval_041",
+    "query": "I sold 10 shares of GOOGL at $175 on February 1, 2025. Please record it.",
+    "expected_tools": ["preview_import"],
+    "category": "import",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_042",
+    "query": "Record a dividend of $0.50 per share for my 15 shares of AAPL on March 1, 2025",
+    "expected_tools": ["preview_import"],
+    "category": "import",
+    "difficulty": "hard"
+  },
+  {
+    "id": "eval_043",
+    "query": "I want to add a purchase: 100 shares of VTI at $250 on January 5, 2025",
+    "expected_tools": ["preview_import"],
+    "category": "import",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_044",
+    "query": "Is Ghostfolio connected and working?",
+    "expected_tools": ["health_check"],
+    "category": "system",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_045",
+    "query": "Check the system health status",
+    "expected_tools": ["health_check"],
+    "category": "system",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_046",
+    "query": "What are my user settings?",
+    "expected_tools": ["get_user_settings"],
+    "category": "settings",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_047",
+    "query": "What currency is my portfolio denominated in?",
+    "expected_tools": ["get_user_settings"],
+    "category": "settings",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_048",
+    "query": "How much have I invested in MSFT in total?",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_049",
+    "query": "What is the month-to-date performance of my portfolio?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "mtd"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_050",
+    "query": "Which holdings are ETFs and which are individual stocks?",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_051",
+    "query": "Give me a risk assessment of my portfolio",
+    "expected_tools": ["get_portfolio_details"],
+    "category": "risk_analysis",
+    "difficulty": "hard"
+  },
+  {
+    "id": "eval_052",
+    "query": "What's the week-to-date change in my portfolio?",
+    "expected_tools": ["get_portfolio_performance"],
+    "expected_params": {"range": "wtd"},
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_053",
+    "query": "Have I received any dividends?",
+    "expected_tools": ["get_orders"],
+    "category": "transaction_history",
+    "difficulty": "medium"
+  },
+  {
+    "id": "eval_054",
+    "query": "What is the symbol for the S&P 500 index fund?",
+    "expected_tools": ["lookup_symbol"],
+    "expected_params": {"query": "S&P 500"},
+    "category": "symbol_lookup",
+    "difficulty": "easy"
+  },
+  {
+    "id": "eval_055",
+    "query": "How many shares of NVDA do I own?",
+    "expected_tools": ["get_portfolio_holdings"],
+    "category": "portfolio_read",
+    "difficulty": "easy"
   }
 ]
