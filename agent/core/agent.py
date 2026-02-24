@@ -7,7 +7,7 @@ import pathlib
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
 from agent.config.settings import settings
@@ -85,9 +85,18 @@ async def create_agent(
     )
 
     # Persistent SQLite checkpointer for cross-session memory
-    db_path = _get_db_path()
-    checkpointer = AsyncSqliteSaver.from_conn_string(db_path)
-    await checkpointer.setup()
+    # Falls back to in-memory if SQLite setup fails (e.g. missing deps in container)
+    checkpointer: object
+    try:
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+        db_path = _get_db_path()
+        checkpointer = AsyncSqliteSaver.from_conn_string(db_path)
+        await checkpointer.setup()
+        logger.info("Using persistent SQLite memory")
+    except Exception as exc:
+        logger.warning(f"SQLite checkpointer failed ({exc}), falling back to in-memory")
+        checkpointer = MemorySaver()
 
     # Build the ReAct agent via LangGraph
     agent = create_react_agent(
