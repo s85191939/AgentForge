@@ -158,6 +158,27 @@
     .h-pct { font-family: var(--mono); font-size: 10px; color: var(--text-secondary); text-align: right; }
     .h-val { font-family: var(--mono); font-size: 10px; color: var(--amber); text-align: right; }
 
+    /* Thread list */
+    .thread-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .thread-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 8px; border-radius: 4px; cursor: pointer;
+      font-family: var(--mono); font-size: 10.5px; color: var(--text-secondary);
+      transition: all 0.15s; margin-bottom: 2px;
+    }
+    .thread-item:hover { background: rgba(255,255,255,0.03); color: var(--text-primary); }
+    .thread-item.active {
+      background: rgba(0,230,118,0.06); color: var(--green);
+      border: 1px solid rgba(0,230,118,0.12);
+    }
+    .thread-item .thread-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .thread-item .thread-count {
+      font-size: 9px; color: var(--text-muted); margin-left: 6px; flex-shrink: 0;
+    }
+
     .sb-toggle {
       display: none; position: fixed; bottom: 80px; left: 10px; z-index: 20;
       background: var(--bg-card); border: 1px solid var(--border);
@@ -391,6 +412,10 @@
       <div class="pv" id="pv">--</div>
       <div class="pc" id="pc">Loading...</div>
     </div>
+    <div class="thread-section">
+      <div class="sec-title">Chat History</div>
+      <div id="thread-list"></div>
+    </div>
     <div class="sidebar-body">
       <div class="sec-title">Holdings</div>
       <div id="hlist"></div>
@@ -461,13 +486,17 @@ input.addEventListener('input', () => {
 })();
 
 // ===== Thread Management (REST API) =====
+let allThreads = [];
+
 async function loadThreads() {
   try {
     const r = await fetch(API + '/api/threads');
     const data = await r.json();
-    const threads = data.threads || [];
-    if (threads.length > 0) {
-      currentThreadId = threads[0].id;
+    allThreads = data.threads || [];
+    renderThreadList();
+    if (allThreads.length > 0) {
+      currentThreadId = allThreads[0].id;
+      renderThreadList();
       await loadMessages();
     } else {
       await createNewThread();
@@ -478,11 +507,38 @@ async function loadThreads() {
   }
 }
 
+function renderThreadList() {
+  const list = document.getElementById('thread-list');
+  if (!list) return;
+  list.innerHTML = '';
+  allThreads.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'thread-item' + (t.id === currentThreadId ? ' active' : '');
+    const count = t.message_count || 0;
+    const label = count > 0 ? 'Chat ' + (allThreads.length - i) : 'New Chat';
+    div.innerHTML =
+      '<span class="thread-label">' + label + '</span>' +
+      '<span class="thread-count">' + (count > 0 ? count + ' msgs' : '') + '</span>';
+    div.onclick = () => switchThread(t.id);
+    list.appendChild(div);
+  });
+}
+
+async function switchThread(threadId) {
+  if (threadId === currentThreadId) return;
+  currentThreadId = threadId;
+  renderThreadList();
+  await loadMessages();
+}
+
 async function createNewThread() {
   try {
     const r = await fetch(API + '/api/threads', { method: 'POST' });
     const thread = await r.json();
     currentThreadId = thread.id;
+    // Add to front of thread list
+    allThreads.unshift({ id: thread.id, title: thread.title || 'New Chat', message_count: 0 });
+    renderThreadList();
   } catch (e) {
     // Fallback: generate local ID (no persistence)
     currentThreadId = 'local-' + Math.random().toString(36).substring(2, 10);

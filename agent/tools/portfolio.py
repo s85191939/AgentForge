@@ -34,15 +34,20 @@ async def get_portfolio_holdings() -> str:
     for h in holdings if isinstance(holdings, list) else [holdings]:
         name = h.get("name", h.get("symbol", "Unknown"))
         symbol = h.get("symbol", "")
-        value = h.get("marketValue", h.get("value", "N/A"))
+        quantity = h.get("quantity", "N/A")
+        market_price = h.get("marketPrice", "N/A")
+        value = h.get("valueInBaseCurrency", h.get("marketValue", h.get("value", "N/A")))
         currency = h.get("currency", "")
         allocation = h.get("allocationInPercentage", "N/A")
         asset_class = h.get("assetClass", "")
         asset_sub_class = h.get("assetSubClass", "")
+        perf_pct = h.get("netPerformancePercent", None)
+        perf_str = f" | Performance: {perf_pct * 100:.2f}%" if perf_pct is not None else ""
         summary_lines.append(
-            f"- {name} ({symbol}): {currency} {value} | "
+            f"- {name} ({symbol}): Price: {currency} {market_price} | "
+            f"Qty: {quantity} | Value: {currency} {value} | "
             f"Allocation: {allocation}% | "
-            f"Class: {asset_class}/{asset_sub_class}"
+            f"Class: {asset_class}/{asset_sub_class}{perf_str}"
         )
 
     return f"Portfolio Holdings ({len(summary_lines)} positions):\n" + "\n".join(summary_lines)
