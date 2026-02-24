@@ -140,13 +140,15 @@ async def run_eval(
     pct = (passed_count / total * 100) if total > 0 else 0
     kw_pct = (keyword_count / total * 100) if total > 0 else 0
 
-    print(f"\n{'=' * 64}")
-    print(f"  EVAL RESULTS")
-    print(f"{'=' * 64}")
+    sep = "=" * 64
+    print(f"\n{sep}")
+    print("  EVAL RESULTS")
+    print(sep)
     print(f"  Tool Match:     {passed_count}/{total} passed ({pct:.0f}%)")
     print(f"  Keyword Match:  {keyword_count}/{total} passed ({kw_pct:.0f}%)")
-    print(f"  Total Time:     {total_time:.1f}s ({total_time / total:.1f}s avg per query)")
-    print(f"{'=' * 64}")
+    avg_t = total_time / total if total > 0 else 0
+    print(f"  Total Time:     {total_time:.1f}s ({avg_t:.1f}s avg per query)")
+    print(sep)
 
     # Category breakdown
     categories: dict[str, list[dict]] = {}
@@ -154,8 +156,10 @@ async def run_eval(
         cat = r.get("category", "unknown")
         categories.setdefault(cat, []).append(r)
 
-    print(f"\n  {'Category':<25} {'Pass':>6} {'Total':>6} {'Rate':>6}")
-    print(f"  {'-' * 45}")
+    cat_hdr = f"  {'Category':<25} {'Pass':>6} {'Total':>6} {'Rate':>6}"
+    print(f"\n{cat_hdr}")
+    dash_line = "  " + "-" * 45
+    print(dash_line)
     for cat, cat_results in sorted(categories.items()):
         cat_passed = sum(1 for r in cat_results if r.get("pass"))
         cat_total = len(cat_results)
@@ -163,8 +167,9 @@ async def run_eval(
         print(f"  {cat:<25} {cat_passed:>6} {cat_total:>6} {cat_pct:>5.0f}%")
 
     # Difficulty breakdown
-    print(f"\n  {'Difficulty':<25} {'Pass':>6} {'Total':>6} {'Rate':>6}")
-    print(f"  {'-' * 45}")
+    diff_hdr = f"  {'Difficulty':<25} {'Pass':>6} {'Total':>6} {'Rate':>6}"
+    print(f"\n{diff_hdr}")
+    print(dash_line)
     for diff in ["easy", "medium", "hard"]:
         diff_results = [r for r in results if r.get("difficulty") == diff]
         if diff_results:
@@ -176,7 +181,7 @@ async def run_eval(
     # Failed queries
     failed = [r for r in results if not r.get("pass")]
     if failed:
-        print(f"\n  FAILED QUERIES:")
+        print("\n  FAILED QUERIES:")
         for r in failed:
             error = f" -- {r['error']}" if "error" in r else ""
             print(f"  [{r['id']}] {r.get('query', '')[:55]}{error}")
@@ -206,7 +211,10 @@ async def run_eval(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run AgentForge eval suite")
     parser.add_argument("--category", help="Filter by category (e.g. performance, portfolio_read)")
-    parser.add_argument("--difficulty", choices=["easy", "medium", "hard"], help="Filter by difficulty")
+    parser.add_argument(
+        "--difficulty", choices=["easy", "medium", "hard"],
+        help="Filter by difficulty",
+    )
     parser.add_argument("--output", help="Write JSON results to file")
     args = parser.parse_args()
 
@@ -214,4 +222,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
-    asyncio.run(run_eval(category=args.category, difficulty=args.difficulty, output_path=args.output))
+    asyncio.run(run_eval(
+        category=args.category,
+        difficulty=args.difficulty,
+        output_path=args.output,
+    ))

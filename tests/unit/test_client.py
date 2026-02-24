@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 import httpx
+import pytest
 import respx
 
 from agent.core.client import GhostfolioClient

@@ -13,7 +13,6 @@ import sys
 
 from agent.core.client import GhostfolioClient
 
-
 SEED_ACTIVITIES = [
     # --- Tech stocks ---
     {
