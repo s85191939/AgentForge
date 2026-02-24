@@ -8,8 +8,12 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+import pathlib
+
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
@@ -57,6 +61,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ---------------------------------------------------------------------------
+# Static files — serve the chat web UI
+# ---------------------------------------------------------------------------
+
+STATIC_DIR = pathlib.Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 
 # ---------------------------------------------------------------------------
 # Middleware — request logging with timing
@@ -93,6 +104,12 @@ class QueryResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@app.get("/")
+async def root():
+    """Serve the chat web UI."""
+    return FileResponse(str(STATIC_DIR / "index.html"))
+
 
 @app.get("/health")
 async def health():
