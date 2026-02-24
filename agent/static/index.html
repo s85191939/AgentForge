@@ -7,333 +7,597 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --bg-primary: #000000;
+      --bg-secondary: #060608;
+      --bg-card: #0d0d12;
+      --border: #1a1a24;
+      --border-light: #2a2a38;
+      --text-primary: #d4d4d4;
+      --text-secondary: #808080;
+      --text-muted: #505050;
+      --green: #00e676;
+      --green-dim: #00c853;
+      --amber: #ffab00;
+      --red: #ff1744;
+      --blue: #40c4ff;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f0f0f;
-      color: #e0e0e0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       height: 100vh;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: 260px 1fr;
+      overflow: hidden;
     }
 
+    /* ===== HEADER ===== */
     header {
-      background: #1a1a2e;
-      border-bottom: 1px solid #2a2a4a;
-      padding: 16px 24px;
+      grid-column: 1 / -1;
+      background: rgba(6,6,8,0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      z-index: 10;
+    }
+    .header-main {
       display: flex;
       align-items: center;
+      padding: 10px 20px;
       gap: 12px;
     }
+    .logo { display: flex; align-items: baseline; gap: 1px; }
+    .logo-a {
+      font-family: var(--mono); font-size: 16px;
+      font-weight: 800; color: #fff; letter-spacing: -0.5px;
+    }
+    .logo-f {
+      font-family: var(--mono); font-size: 16px;
+      font-weight: 800; color: var(--green); letter-spacing: -0.5px;
+    }
+    .logo-sep {
+      font-family: var(--mono); color: var(--text-muted);
+      font-size: 14px; margin: 0 8px;
+    }
+    .header-sub {
+      font-size: 11px; color: var(--text-muted);
+      font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 10px;
+      font-size: 10px; font-family: var(--mono);
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+      background: rgba(0,230,118,0.06);
+      border: 1px solid rgba(0,230,118,0.15); color: var(--green);
+    }
+    .status-pill.offline {
+      background: rgba(255,23,68,0.06);
+      border-color: rgba(255,23,68,0.15); color: var(--red);
+    }
+    .s-dot {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--green);
+    }
+    .status-pill.offline .s-dot { background: var(--red); }
 
-    header .logo {
-      font-size: 24px;
+    /* Ticker */
+    .ticker-wrap {
+      overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      height: 26px; background: rgba(0,0,0,0.4);
+    }
+    .ticker {
+      display: flex; gap: 40px;
+      animation: scroll 35s linear infinite;
+      white-space: nowrap; padding: 5px 0;
+    }
+    .t-item { font-family: var(--mono); font-size: 10.5px; display: flex; gap: 5px; flex-shrink: 0; }
+    .t-sym { color: var(--text-primary); font-weight: 700; }
+    .t-val { color: var(--text-secondary); }
+    .t-pct.up { color: var(--green); }
+    .t-pct.down { color: var(--red); }
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
     }
 
-    header h1 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #fff;
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sb-label {
+      font-size: 9px; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--text-muted);
+      font-weight: 600; margin-bottom: 6px;
+    }
+    .pv {
+      font-family: var(--mono); font-size: 26px;
+      font-weight: 700; color: #fff; margin-bottom: 2px;
+    }
+    .pc { font-family: var(--mono); font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .pc.up { color: var(--green); }
+    .pc.down { color: var(--red); }
+
+    .sidebar-body {
+      padding: 14px 16px; flex: 1; overflow-y: auto;
+    }
+    .sidebar-body::-webkit-scrollbar { width: 4px; }
+    .sidebar-body::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+    .sec-title {
+      font-size: 9px; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--text-muted);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    .h-item {
+      display: grid; grid-template-columns: 46px 1fr 44px;
+      align-items: center; gap: 8px; padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+    .h-sym { font-family: var(--mono); font-size: 11px; font-weight: 700; color: #fff; }
+    .h-bar-w { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .h-bar { height: 100%; border-radius: 2px; transition: width 1s ease; }
+    .h-pct { font-family: var(--mono); font-size: 10px; color: var(--text-secondary); text-align: right; }
+
+    .sb-toggle {
+      display: none; position: fixed; bottom: 80px; left: 10px; z-index: 20;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); width: 36px; height: 36px;
+      border-radius: 8px; cursor: pointer; font-size: 14px;
     }
 
-    header .subtitle {
-      font-size: 12px;
-      color: #888;
-      margin-left: auto;
-    }
-
-    .status {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #444;
-      margin-left: 8px;
-    }
-
-    .status.online { background: #4ade80; }
-    .status.offline { background: #f87171; }
+    /* ===== MAIN ===== */
+    .main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg-primary); }
 
     #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 14px;
     }
+    #chat::-webkit-scrollbar { width: 5px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 
     .message {
-      max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      line-height: 1.6;
-      font-size: 14px;
-      white-space: pre-wrap;
+      max-width: 88%; padding: 12px 16px;
+      border-radius: 6px; line-height: 1.7; font-size: 13px;
     }
-
     .message.user {
       align-self: flex-end;
-      background: #2563eb;
-      color: #fff;
-      border-bottom-right-radius: 4px;
+      background: rgba(0,230,118,0.07);
+      border: 1px solid rgba(0,230,118,0.15);
+      color: var(--green); font-family: var(--mono); font-size: 12.5px;
     }
-
+    .message.user::before { content: '> '; color: var(--green-dim); opacity: 0.5; }
     .message.agent {
       align-self: flex-start;
-      background: #1e1e2e;
-      border: 1px solid #2a2a4a;
-      border-bottom-left-radius: 4px;
+      background: var(--bg-card); border: 1px solid var(--border);
     }
-
-    .message.agent .content { white-space: pre-wrap; }
-    .message.agent .content strong { color: #60a5fa; }
-
+    .message.agent .content { white-space: pre-wrap; word-wrap: break-word; }
+    .message.agent .content strong { color: var(--amber); }
     .message.error {
       align-self: flex-start;
-      background: #2d1b1b;
-      border: 1px solid #5c2626;
-      color: #f87171;
+      background: rgba(255,23,68,0.06);
+      border: 1px solid rgba(255,23,68,0.15);
+      color: var(--red); font-family: var(--mono); font-size: 12px;
     }
 
-    .typing {
-      align-self: flex-start;
-      padding: 12px 16px;
-      background: #1e1e2e;
-      border: 1px solid #2a2a4a;
-      border-radius: 12px;
-      font-size: 14px;
-      color: #888;
+    /* Rich responses */
+    .response-table {
+      width: 100%; border-collapse: collapse; margin: 10px 0;
+      font-family: var(--mono); font-size: 11.5px;
+    }
+    .response-table th {
+      text-align: left; padding: 5px 8px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.5px;
+    }
+    .response-table td {
+      padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+    .val-pos { color: var(--green); font-family: var(--mono); }
+    .val-neg { color: var(--red); font-family: var(--mono); }
+    .val-money { color: var(--amber); font-family: var(--mono); }
+    .val-pct { font-family: var(--mono); font-weight: 600; }
+    .val-sym { color: #fff; font-family: var(--mono); font-weight: 700; }
+
+    /* Thinking */
+    .thinking {
+      align-self: flex-start; display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 6px;
+    }
+    .thinking-dots { display: flex; gap: 3px; }
+    .thinking-dots span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--green); opacity: 0.2;
+      animation: dp 1.4s ease-in-out infinite;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes dp {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+    .thinking-step {
+      font-size: 11px; color: var(--text-muted);
+      font-family: var(--mono); transition: opacity 0.3s;
     }
 
-    .typing::after {
-      content: '';
-      animation: dots 1.5s infinite;
-    }
+    /* Welcome */
+    .welcome { text-align: center; padding: 60px 24px 16px; }
+    .welcome-g { font-size: 40px; margin-bottom: 16px; opacity: 0.25; color: var(--green); }
+    .welcome h2 { font-size: 16px; color: var(--text-secondary); font-weight: 500; margin-bottom: 6px; }
+    .welcome p { font-size: 12px; color: var(--text-muted); }
 
-    @keyframes dots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
-    }
-
-    #input-area {
-      padding: 16px 24px;
-      background: #1a1a2e;
-      border-top: 1px solid #2a2a4a;
-      display: flex;
-      gap: 12px;
-    }
-
-    #input {
-      flex: 1;
-      padding: 12px 16px;
-      background: #0f0f1a;
-      border: 1px solid #2a2a4a;
-      border-radius: 8px;
-      color: #e0e0e0;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      resize: none;
-      min-height: 44px;
-      max-height: 120px;
-    }
-
-    #input:focus { border-color: #2563eb; }
-
-    #input::placeholder { color: #555; }
-
-    #send {
-      padding: 12px 24px;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    #send:hover { background: #1d4ed8; }
-    #send:disabled { background: #333; cursor: not-allowed; color: #666; }
-
-    .welcome {
-      text-align: center;
-      padding: 48px 24px;
-      color: #666;
-    }
-
-    .welcome h2 {
-      font-size: 20px;
-      color: #aaa;
-      margin-bottom: 12px;
-    }
-
+    /* Suggestions */
     #suggestions {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 24px;
-      background: #0f0f0f;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 5px; padding: 6px 20px;
+    }
+    .sug {
+      padding: 5px 12px; background: transparent;
+      border: 1px solid var(--border); border-radius: 3px;
+      font-size: 11px; font-family: var(--mono);
+      color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+    }
+    .sug:hover {
+      border-color: var(--green); color: var(--green);
+      background: rgba(0,230,118,0.04);
     }
 
-    #suggestions.hidden { display: none; }
-
-    .suggestion {
-      padding: 8px 16px;
-      background: #1e1e2e;
-      border: 1px solid #2a2a4a;
-      border-radius: 20px;
-      font-size: 13px;
-      color: #aaa;
-      cursor: pointer;
-      transition: all 0.15s;
+    /* Input */
+    #input-area {
+      padding: 10px 20px 12px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; background: var(--bg-secondary);
     }
+    .input-wrap { flex: 1; position: relative; }
+    .input-gt {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%); color: var(--green-dim);
+      font-family: var(--mono); font-size: 13px; opacity: 0.4;
+      pointer-events: none;
+    }
+    #input {
+      width: 100%; padding: 10px 12px 10px 26px;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-primary);
+      font-size: 13px; font-family: var(--mono);
+      outline: none; resize: none; min-height: 40px; max-height: 120px;
+    }
+    #input:focus {
+      border-color: rgba(0,230,118,0.4);
+      box-shadow: 0 0 0 1px rgba(0,230,118,0.08);
+    }
+    #input::placeholder { color: var(--text-muted); }
+    #send {
+      padding: 10px 18px; background: var(--green); color: #000;
+      border: none; border-radius: 4px; font-size: 11px;
+      font-weight: 800; font-family: var(--mono); cursor: pointer;
+      transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    #send:hover { background: var(--green-dim); }
+    #send:disabled { background: var(--border); cursor: not-allowed; color: var(--text-muted); }
 
-    .suggestion:hover {
-      border-color: #2563eb;
-      color: #60a5fa;
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .sidebar.open {
+        display: flex; position: fixed; top: 0; left: 0;
+        width: 260px; height: 100vh; z-index: 15;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.8);
+      }
+      .sb-toggle { display: block; }
     }
   </style>
 </head>
 <body>
+
   <header>
-    <span class="logo">📊</span>
-    <h1>AgentForge Finance</h1>
-    <span class="subtitle">Portfolio Intelligence Agent</span>
-    <div class="status" id="status"></div>
+    <div class="header-main">
+      <div class="logo">
+        <span class="logo-a">AGENT</span><span class="logo-f">FORGE</span>
+      </div>
+      <span class="logo-sep">|</span>
+      <span class="header-sub">Portfolio Intelligence</span>
+      <div class="header-right">
+        <div class="status-pill" id="spill">
+          <span class="s-dot"></span>
+          <span id="stxt">connecting</span>
+        </div>
+      </div>
+    </div>
+    <div class="ticker-wrap"><div class="ticker" id="ticker"></div></div>
   </header>
 
-  <div id="chat">
-    <div class="welcome" id="welcome">
-      <h2>What would you like to know about your portfolio?</h2>
-      <p>Ask me anything about your holdings, performance, transactions, or market data.</p>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sb-label">Portfolio Value</div>
+      <div class="pv" id="pv">--</div>
+      <div class="pc" id="pc">Loading...</div>
+    </div>
+    <div class="sidebar-body">
+      <div class="sec-title">Holdings</div>
+      <div id="hlist"></div>
+    </div>
+  </aside>
+
+  <button class="sb-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+
+  <div class="main">
+    <div id="chat">
+      <div class="welcome" id="welcome">
+        <div class="welcome-g">&#9672;</div>
+        <h2>Portfolio Intelligence Terminal</h2>
+        <p>Ask anything about your holdings, performance, risk, or transactions.</p>
+      </div>
+    </div>
+
+    <div id="suggestions">
+      <div class="sug" data-q="What are my current holdings?">holdings</div>
+      <div class="sug" data-q="How has my portfolio performed this year?">performance ytd</div>
+      <div class="sug" data-q="Which stock has the highest allocation?">top allocation</div>
+      <div class="sug" data-q="What is the ticker symbol for Tesla?">lookup TSLA</div>
+      <div class="sug" data-q="Show me my complete transaction history">transactions</div>
+      <div class="sug" data-q="Give me a risk assessment of my portfolio">risk analysis</div>
+    </div>
+
+    <div id="input-area">
+      <div class="input-wrap">
+        <span class="input-gt">&gt;</span>
+        <textarea id="input" placeholder="Query your portfolio..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+      </div>
+      <button id="send" onclick="sendMessage()">SEND</button>
     </div>
   </div>
 
-  <div id="suggestions">
-    <div class="suggestion" onclick="askSuggestion(this)">What are my holdings?</div>
-    <div class="suggestion" onclick="askSuggestion(this)">Show my transaction history</div>
-    <div class="suggestion" onclick="askSuggestion(this)">Which stock has the highest allocation?</div>
-    <div class="suggestion" onclick="askSuggestion(this)">Look up the ticker for Tesla</div>
-    <div class="suggestion" onclick="askSuggestion(this)">How has my portfolio performed?</div>
-    <div class="suggestion" onclick="askSuggestion(this)">What accounts do I have?</div>
-  </div>
+<script>
+const API = window.location.origin;
+const threadId = 'web-' + Math.random().toString(36).substring(2, 10);
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const welcome = document.getElementById('welcome');
+const COLORS = ['#00e676','#40c4ff','#ffab00','#ff6b9d','#ba68c8','#26c6da','#ffee58','#69f0ae','#ff8a65','#7c4dff'];
+const STEPS = [
+  'Connecting to Ghostfolio API...',
+  'Fetching portfolio data...',
+  'Analyzing holdings...',
+  'Computing performance metrics...',
+  'Running risk analysis...',
+  'Interpreting market data...',
+  'Preparing response...'
+];
 
-  <div id="input-area">
-    <textarea id="input" placeholder="Ask about your portfolio..." rows="1"
-      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
-    <button id="send" onclick="sendMessage()">Send</button>
-  </div>
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
 
-  <script>
-    const API = window.location.origin;
-    const threadId = 'web-' + Math.random().toString(36).substring(2, 10);
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    const statusDot = document.getElementById('status');
-    const suggestions = document.getElementById('suggestions');
-    const welcome = document.getElementById('welcome');
+// Health check
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    const d = await r.json();
+    const ok = d.ghostfolio === 'OK';
+    document.getElementById('spill').className = 'status-pill' + (ok ? '' : ' offline');
+    document.getElementById('stxt').textContent = ok ? 'online' : 'offline';
+  } catch {
+    document.getElementById('spill').className = 'status-pill offline';
+    document.getElementById('stxt').textContent = 'offline';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
 
-    // Auto-resize textarea
-    input.addEventListener('input', () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+// Sidebar + Ticker
+async function loadSummary() {
+  try {
+    const r = await fetch(API + '/api/portfolio-summary');
+    const d = await r.json();
+    const holdings = d.holdings || [];
+    const perf = d.performance || {};
+
+    // Value
+    const total = holdings.reduce((s, h) => s + (h.marketValue || 0), 0);
+    document.getElementById('pv').textContent =
+      '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // Change
+    const el = document.getElementById('pc');
+    const np = perf.netPerformance || 0;
+    const npp = (perf.netPerformancePercentage || 0) * 100;
+    const up = np >= 0;
+    el.className = 'pc ' + (up ? 'up' : 'down');
+    const arr = up ? '\u25B2' : '\u25BC';
+    const sgn = up ? '+' : '';
+    el.innerHTML = arr + ' ' + sgn + '$' +
+      Math.abs(np).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) +
+      ' (' + sgn + npp.toFixed(2) + '%) today';
+
+    // Holdings
+    const list = document.getElementById('hlist');
+    list.innerHTML = '';
+    holdings.sort((a, b) => (b.allocationInPercentage || 0) - (a.allocationInPercentage || 0));
+    const mx = Math.max(...holdings.map(h => h.allocationInPercentage || 0), 1);
+    holdings.forEach((h, i) => {
+      const p = h.allocationInPercentage || 0;
+      const c = COLORS[i % COLORS.length];
+      const div = document.createElement('div');
+      div.className = 'h-item';
+      div.innerHTML =
+        '<div class="h-sym">' + h.symbol + '</div>' +
+        '<div class="h-bar-w"><div class="h-bar" style="width:' + (p/mx*100) + '%;background:' + c + '"></div></div>' +
+        '<div class="h-pct">' + p.toFixed(1) + '%</div>';
+      list.appendChild(div);
     });
 
-    // Health check
-    async function checkHealth() {
-      try {
-        const r = await fetch(API + '/health');
-        const data = await r.json();
-        statusDot.className = 'status ' + (data.ghostfolio === 'OK' ? 'online' : 'offline');
-      } catch {
-        statusDot.className = 'status offline';
-      }
+    // Ticker
+    buildTicker(holdings);
+  } catch(e) { console.warn('Summary error:', e); }
+}
+
+function buildTicker(h) {
+  const t = document.getElementById('ticker');
+  if (!h.length) { t.innerHTML = '<span class="t-item"><span class="t-sym">---</span> No data</span>'; return; }
+  let html = '';
+  for (let r = 0; r < 3; r++) {
+    h.forEach(x => {
+      const v = (x.marketValue || 0);
+      const p = (x.allocationInPercentage || 0);
+      html += '<span class="t-item">' +
+        '<span class="t-sym">' + x.symbol + '</span>' +
+        '<span class="t-val">$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
+        '<span class="t-pct up">' + p.toFixed(1) + '%</span></span>';
+    });
+  }
+  t.innerHTML = html;
+}
+
+loadSummary();
+setInterval(loadSummary, 60000);
+
+// Rich formatting
+function formatResponse(text) {
+  const lines = text.split('\n');
+  let out = [], inTbl = false, tRows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const s = lines[i].trim();
+    if (s.startsWith('|') && s.endsWith('|') && s.split('|').length > 2) {
+      if (!inTbl) { inTbl = true; tRows = []; }
+      if (!/^\|[\s\-:|]+\|$/.test(s)) tRows.push(s);
+      continue;
     }
-    checkHealth();
-    setInterval(checkHealth, 30000);
+    if (inTbl) { out.push(mkTable(tRows)); inTbl = false; tRows = []; }
+    out.push(fmtLine(lines[i]));
+  }
+  if (inTbl) out.push(mkTable(tRows));
+  return out.join('\n');
+}
 
-    function addMessage(text, type) {
-      // Hide welcome text on first message (suggestions stay)
-      if (welcome) welcome.style.display = 'none';
+function mkTable(rows) {
+  if (!rows.length) return '';
+  let h = '<table class="response-table">';
+  rows.forEach((r, i) => {
+    const cells = r.split('|').filter(c => c.trim() !== '');
+    const tag = i === 0 ? 'th' : 'td';
+    h += '<tr>';
+    cells.forEach(c => { h += '<' + tag + '>' + colorize(c.trim()) + '</' + tag + '>'; });
+    h += '</tr>';
+  });
+  return h + '</table>';
+}
 
-      const div = document.createElement('div');
-      div.className = 'message ' + type;
+function colorize(t) {
+  t = t.replace(/\$[\d,]+\.?\d*/g, m => '<span class="val-money">' + m + '</span>');
+  t = t.replace(/\+[\d.]+%/g, m => '<span class="val-pos">' + m + '</span>');
+  t = t.replace(/-[\d.]+%/g, m => '<span class="val-neg">' + m + '</span>');
+  t = t.replace(/(?<!\w)([\d.]+%)/g, (m, p) => '<span class="val-pct">' + p + '</span>');
+  const reserved = new Set(['USD','BUY','SELL','ETF','OK','NOT','AND','THE','FOR','ALL','YOU','HAS','ARE','WAS','HAD','BUT','NEW','PER','ITS']);
+  t = t.replace(/(?<![A-Za-z])([A-Z]{2,5})(?![a-z])/g, (m, p) => reserved.has(p) ? m : '<span class="val-sym">' + p + '</span>');
+  return t;
+}
 
-      if (type === 'agent') {
-        // Basic markdown: **bold**, newlines
-        const formatted = text
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\n/g, '<br>');
-        div.innerHTML = '<div class="content">' + formatted + '</div>';
-      } else {
-        div.textContent = text;
-      }
+function fmtLine(l) {
+  l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  l = colorize(l);
+  if (/^\s*[-*]\s/.test(l))
+    l = l.replace(/^\s*[-*]\s/, '<span style="color:var(--green);margin-right:4px;">&#9656;</span>');
+  if (/^\s*\d+\.\s/.test(l))
+    l = l.replace(/^(\s*\d+\.)(\s)/, '<span style="color:var(--amber);">$1</span>$2');
+  return l;
+}
 
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-      return div;
+// Messages
+function addMessage(text, type) {
+  if (welcome) welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'message ' + type;
+  if (type === 'agent') {
+    div.innerHTML = '<div class="content">' + formatResponse(text).replace(/\n/g, '<br>') + '</div>';
+  } else {
+    div.textContent = text;
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+// Thinking indicator
+let thinkInt = null;
+function showThinking() {
+  const div = document.createElement('div');
+  div.className = 'thinking'; div.id = 'thinking';
+  div.innerHTML =
+    '<div class="thinking-dots"><span></span><span></span><span></span></div>' +
+    '<span class="thinking-step" id="tstep">' + STEPS[0] + '</span>';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  let s = 0;
+  thinkInt = setInterval(() => {
+    s = (s + 1) % STEPS.length;
+    const el = document.getElementById('tstep');
+    if (el) {
+      el.style.opacity = '0';
+      setTimeout(() => { if (el) { el.textContent = STEPS[s]; el.style.opacity = '1'; } }, 200);
     }
+  }, 2200);
+}
+function hideThinking() {
+  clearInterval(thinkInt); thinkInt = null;
+  const el = document.getElementById('thinking');
+  if (el) el.remove();
+}
 
-    function showTyping() {
-      const div = document.createElement('div');
-      div.className = 'typing';
-      div.id = 'typing';
-      div.textContent = 'Thinking';
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+// Send
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  sendBtn.disabled = true;
+  addMessage(text, 'user');
+  showThinking();
+  try {
+    const r = await fetch(API + '/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, thread_id: threadId }),
+    });
+    hideThinking();
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      addMessage('ERR: ' + (err.detail || 'Something went wrong'), 'error');
+    } else {
+      const data = await r.json();
+      addMessage(data.response, 'agent');
+      loadSummary();
     }
+  } catch (e) {
+    hideThinking();
+    addMessage('ERR: Could not reach the agent.', 'error');
+  }
+  sendBtn.disabled = false;
+  input.focus();
+}
 
-    function removeTyping() {
-      const el = document.getElementById('typing');
-      if (el) el.remove();
-    }
+// Suggestions
+document.querySelectorAll('.sug').forEach(el => {
+  el.addEventListener('click', () => { input.value = el.dataset.q; sendMessage(); });
+});
 
-    async function sendMessage() {
-      const text = input.value.trim();
-      if (!text) return;
-
-      input.value = '';
-      input.style.height = 'auto';
-      sendBtn.disabled = true;
-
-      addMessage(text, 'user');
-      showTyping();
-
-      try {
-        const r = await fetch(API + '/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, thread_id: threadId }),
-        });
-
-        removeTyping();
-
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          addMessage('Error: ' + (err.detail || 'Something went wrong'), 'error');
-        } else {
-          const data = await r.json();
-          addMessage(data.response, 'agent');
-        }
-      } catch (e) {
-        removeTyping();
-        addMessage('Error: Could not reach the agent. Is it running?', 'error');
-      }
-
-      sendBtn.disabled = false;
-      input.focus();
-    }
-
-    function askSuggestion(el) {
-      input.value = el.textContent;
-      sendMessage();
-    }
-
-    input.focus();
-  </script>
+input.focus();
+</script>
 </body>
 </html>

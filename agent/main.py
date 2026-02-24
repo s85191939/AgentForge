@@ -127,6 +127,22 @@ async def health():
     }
 
 
+@app.get("/api/portfolio-summary")
+async def portfolio_summary():
+    """Return raw portfolio data for the dashboard sidebar and ticker."""
+    try:
+        client = get_client()
+        holdings = await client.get_portfolio_holdings()
+        performance = await client.get_portfolio_performance(range_="1d")
+        return {
+            "holdings": holdings.get("holdings", []),
+            "performance": performance,
+        }
+    except Exception as e:
+        logger.warning(f"Portfolio summary error: {e}")
+        return {"holdings": [], "performance": {}, "error": str(e)}
+
+
 @app.post("/query", response_model=QueryResponse)
 async def query(req: QueryRequest):
     """Send a natural language query to the finance agent."""
