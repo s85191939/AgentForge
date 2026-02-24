@@ -118,13 +118,14 @@ class GhostfolioClient:
         return r.json()
 
     async def get_portfolio_performance(self, range_: str = "max") -> dict:
-        """GET /api/v1/portfolio/performance?range=<range>
+        """GET /api/v2/portfolio/performance?range=<range>
 
         Valid ranges: 1d, wtd, 1w, mtd, 1m, 3m, ytd, 1y, 3y, 5y, max
         """
+        # v2 endpoint (v1 was removed in newer Ghostfolio versions)
         r = await self._request(
             "GET",
-            "/api/v1/portfolio/performance",
+            "/api/v2/portfolio/performance",
             params={"range": range_},
         )
         return r.json()

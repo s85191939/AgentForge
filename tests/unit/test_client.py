@@ -125,7 +125,7 @@ async def test_get_portfolio_performance(client: GhostfolioClient):
         "netPerformancePercentage": 0.1,
         "totalInvestment": 45000,
     }
-    respx.get("http://localhost:3333/api/v1/portfolio/performance").mock(
+    respx.get("http://localhost:3333/api/v2/portfolio/performance").mock(
         return_value=httpx.Response(200, json=mock_perf)
     )
 

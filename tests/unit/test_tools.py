@@ -70,7 +70,7 @@ async def test_get_portfolio_performance_tool(setup_client):
     )
     await setup_client.authenticate()
 
-    respx.get("http://localhost:3333/api/v1/portfolio/performance").mock(
+    respx.get("http://localhost:3333/api/v2/portfolio/performance").mock(
         return_value=httpx.Response(
             200,
             json={
