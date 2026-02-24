@@ -10,7 +10,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import ToolMessage
@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
 from agent.core.agent import create_agent
+from agent.core.auth_middleware import get_current_user
 from agent.core.formatter import format_response
 from agent.core.verification import verify_response
 from agent.tools.auth import get_client
@@ -41,7 +42,7 @@ logger = logging.getLogger("agentforge")
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Start-up: create agent. Shutdown: close HTTP client."""
     logger.info("Starting AgentForge Finance agent...")
-    app.state.agent = await create_agent()
+    app.state.agent = create_agent()
     logger.info("Agent ready.")
     yield
     try:
@@ -120,7 +121,7 @@ class QueryResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Routes
+# Public Routes (no auth required)
 # ---------------------------------------------------------------------------
 
 @app.get("/")
@@ -146,8 +147,12 @@ async def health():
     }
 
 
+# ---------------------------------------------------------------------------
+# Authenticated Routes
+# ---------------------------------------------------------------------------
+
 @app.get("/api/portfolio-summary")
-async def portfolio_summary():
+async def portfolio_summary(user: dict = Depends(get_current_user)):
     """Return raw portfolio data for the dashboard sidebar and ticker."""
     try:
         client = get_client()
@@ -163,15 +168,19 @@ async def portfolio_summary():
 
 
 @app.post("/query", response_model=QueryResponse)
-async def query(req: QueryRequest):
+async def query(req: QueryRequest, user: dict = Depends(get_current_user)):
     """Send a natural language query to the finance agent."""
+    uid = user["uid"]
     agent = app.state.agent
+
+    # Namespace thread_id per user for LangGraph isolation
+    langgraph_thread_id = f"{uid}_{req.thread_id}"
 
     try:
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": req.message}]},
             config={
-                "configurable": {"thread_id": req.thread_id},
+                "configurable": {"thread_id": langgraph_thread_id},
                 "recursion_limit": settings.agent_max_iterations * 2,
             },
         )

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     langchain_api_key: str = ""
     langchain_project: str = "agentforge-finance"
 
+    # Firebase
+    firebase_project_id: str = "agentforge-86e27"
+
     # Agent
     agent_max_iterations: int = 10
     agent_confidence_threshold: float = 0.7

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
@@ -45,19 +44,7 @@ You have access to a live Ghostfolio instance via REST API tools.
 """
 
 
-def _get_db_path() -> str:
-    """Return the path for the SQLite checkpoint database."""
-    # Use /data if it exists (Railway persistent volume), else local .data dir
-    data_dir = pathlib.Path("/data")
-    if not data_dir.exists():
-        data_dir = pathlib.Path(__file__).resolve().parent.parent.parent / ".data"
-        data_dir.mkdir(parents=True, exist_ok=True)
-    db_path = str(data_dir / "memory.db")
-    logger.info(f"Checkpoint DB: {db_path}")
-    return db_path
-
-
-async def create_agent(
+def create_agent(
     base_url: str | None = None,
     security_token: str | None = None,
 ):
@@ -84,19 +71,9 @@ async def create_agent(
         temperature=0,
     )
 
-    # Persistent SQLite checkpointer for cross-session memory
-    # Falls back to in-memory if SQLite setup fails (e.g. missing deps in container)
-    checkpointer: object
-    try:
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-
-        db_path = _get_db_path()
-        checkpointer = AsyncSqliteSaver.from_conn_string(db_path)
-        await checkpointer.setup()
-        logger.info("Using persistent SQLite memory")
-    except Exception as exc:
-        logger.warning(f"SQLite checkpointer failed ({exc}), falling back to in-memory")
-        checkpointer = MemorySaver()
+    # In-memory checkpointer — Firestore handles cross-session persistence
+    checkpointer = MemorySaver()
+    logger.info("Agent created with in-memory checkpointer (Firestore handles persistence)")
 
     # Build the ReAct agent via LangGraph
     agent = create_react_agent(

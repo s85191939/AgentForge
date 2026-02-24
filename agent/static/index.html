@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AgentForge Finance</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -33,6 +37,26 @@
       grid-template-rows: auto 1fr;
       grid-template-columns: 260px 1fr;
       overflow: hidden;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg-primary);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+    }
+    #login-screen.hidden { display: none; }
+    #google-signin-btn {
+      padding: 12px 24px; background: #fff; color: #333;
+      border: none; border-radius: 6px; font-size: 14px;
+      font-weight: 600; cursor: pointer; display: flex;
+      align-items: center; gap: 10px; transition: box-shadow 0.2s;
+    }
+    #google-signin-btn:hover { box-shadow: 0 2px 12px rgba(255,255,255,0.1); }
+    #login-error {
+      color: var(--red); font-family: var(--mono);
+      font-size: 11px; display: none;
     }
 
     /* ===== HEADER ===== */
@@ -68,6 +92,26 @@
       font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px;
     }
     .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    #user-email {
+      font-family: var(--mono); font-size: 10px;
+      color: var(--text-muted); display: none;
+    }
+    #signout-btn {
+      display: none; padding: 3px 10px; border-radius: 10px;
+      font-size: 10px; font-family: var(--mono); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      background: rgba(255,23,68,0.06); border: 1px solid rgba(255,23,68,0.15);
+      color: var(--red); cursor: pointer;
+    }
+    #signout-btn:hover { background: rgba(255,23,68,0.12); }
+    #new-thread-btn {
+      display: none; padding: 3px 10px; border-radius: 10px;
+      font-size: 10px; font-family: var(--mono); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      background: rgba(0,230,118,0.06); border: 1px solid rgba(0,230,118,0.15);
+      color: var(--green); cursor: pointer;
+    }
+    #new-thread-btn:hover { background: rgba(0,230,118,0.12); }
     .status-pill {
       display: flex; align-items: center; gap: 5px;
       padding: 3px 10px; border-radius: 10px;
@@ -359,6 +403,27 @@
 </head>
 <body>
 
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div class="logo" style="margin-bottom: 8px;">
+      <span class="logo-a" style="font-size: 28px;">AGENT</span>
+      <span class="logo-f" style="font-size: 28px;">FORGE</span>
+    </div>
+    <p style="color: var(--text-muted); font-family: var(--mono); font-size: 12px;">
+      Sign in to access your portfolio intelligence terminal
+    </p>
+    <button id="google-signin-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <div id="login-error"></div>
+  </div>
+
   <header>
     <div class="header-main">
       <div class="logo">
@@ -367,6 +432,9 @@
       <span class="logo-sep">|</span>
       <span class="header-sub">Portfolio Intelligence</span>
       <div class="header-right">
+        <span id="user-email"></span>
+        <button id="new-thread-btn" onclick="createNewThread()">+ New Chat</button>
+        <button id="signout-btn" onclick="doSignOut()">Sign Out</button>
         <div class="status-pill" id="spill">
           <span class="s-dot"></span>
           <span id="stxt">connecting</span>
@@ -419,10 +487,25 @@
   </div>
 
 <script>
+// ===== Firebase Configuration =====
+const firebaseConfig = {
+  apiKey: "AIzaSyARPs7mIjbsxq2k8_xwffokdafhHkmUyF8",
+  authDomain: "agentforge-86e27.firebaseapp.com",
+  projectId: "agentforge-86e27",
+  storageBucket: "agentforge-86e27.firebasestorage.app",
+  messagingSenderId: "131998125746",
+  appId: "1:131998125746:web:392e0cb2dc443e8f2183ab"
+};
+firebase.initializeApp(firebaseConfig);
+const authInstance = firebase.auth();
+const db = firebase.firestore();
+
+// ===== State =====
 const API = window.location.origin;
-// Persist thread ID in localStorage so memory survives page reloads
-const threadId = localStorage.getItem('af-thread-id') || ('web-' + Math.random().toString(36).substring(2, 10));
-localStorage.setItem('af-thread-id', threadId);
+let currentUser = null;
+let idToken = null;
+let currentThreadId = null;
+
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -443,7 +526,163 @@ input.addEventListener('input', () => {
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
 });
 
-// Health check
+// ===== Firebase Auth =====
+authInstance.onAuthStateChanged(async (user) => {
+  if (user) {
+    currentUser = user;
+    idToken = await user.getIdToken();
+
+    // Refresh token every 50 minutes (tokens expire after 1 hour)
+    setInterval(async () => {
+      if (currentUser) idToken = await currentUser.getIdToken(true);
+    }, 50 * 60 * 1000);
+
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('user-email').textContent = user.email;
+    document.getElementById('user-email').style.display = 'inline';
+    document.getElementById('signout-btn').style.display = 'inline-block';
+    document.getElementById('new-thread-btn').style.display = 'inline-block';
+
+    // Load or create thread
+    await loadOrCreateThread();
+    checkHealth();
+    loadSummary();
+    setInterval(checkHealth, 30000);
+    setInterval(loadSummary, 60000);
+  } else {
+    currentUser = null;
+    idToken = null;
+    currentThreadId = null;
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('user-email').style.display = 'none';
+    document.getElementById('signout-btn').style.display = 'none';
+    document.getElementById('new-thread-btn').style.display = 'none';
+  }
+});
+
+async function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await authInstance.signInWithPopup(provider);
+  } catch (err) {
+    const el = document.getElementById('login-error');
+    el.textContent = 'Sign-in failed: ' + err.message;
+    el.style.display = 'block';
+  }
+}
+
+function doSignOut() {
+  authInstance.signOut();
+  chat.innerHTML = '';
+  currentThreadId = null;
+}
+
+// ===== Authenticated Fetch =====
+async function authFetch(url, options) {
+  if (!idToken || !currentUser) throw new Error('Not authenticated');
+  idToken = await currentUser.getIdToken();
+  const opts = options || {};
+  const headers = Object.assign({}, opts.headers || {}, {
+    'Authorization': 'Bearer ' + idToken
+  });
+  return fetch(url, Object.assign({}, opts, { headers: headers }));
+}
+
+// ===== Firestore Thread Management =====
+async function loadOrCreateThread() {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+
+  // Check for existing threads
+  try {
+    const snap = await db.collection('users').doc(uid)
+      .collection('threads').orderBy('updated_at', 'desc').limit(1).get();
+
+    if (!snap.empty) {
+      currentThreadId = snap.docs[0].id;
+      await loadMessagesFromFirestore();
+    } else {
+      await createNewThread();
+    }
+  } catch (e) {
+    console.warn('Failed to load threads:', e);
+    await createNewThread();
+  }
+}
+
+async function createNewThread() {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  currentThreadId = 'thread-' + Math.random().toString(36).substring(2, 10);
+
+  await db.collection('users').doc(uid)
+    .collection('threads').doc(currentThreadId).set({
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+  // Reset chat UI
+  chat.innerHTML = '';
+  const w = document.createElement('div');
+  w.className = 'welcome'; w.id = 'welcome';
+  w.innerHTML = '<div class="welcome-g">&#9672;</div>' +
+    '<h2>Portfolio Intelligence Terminal</h2>' +
+    '<p>Ask anything about your holdings, performance, risk, or transactions.</p>';
+  chat.appendChild(w);
+}
+
+async function loadMessagesFromFirestore() {
+  if (!currentUser || !currentThreadId) return;
+  const uid = currentUser.uid;
+
+  try {
+    const snap = await db.collection('users').doc(uid)
+      .collection('threads').doc(currentThreadId)
+      .collection('messages').orderBy('timestamp').get();
+
+    chat.innerHTML = '';
+    if (snap.empty) {
+      const w = document.createElement('div');
+      w.className = 'welcome'; w.id = 'welcome';
+      w.innerHTML = '<div class="welcome-g">&#9672;</div>' +
+        '<h2>Portfolio Intelligence Terminal</h2>' +
+        '<p>Ask anything about your holdings, performance, risk, or transactions.</p>';
+      chat.appendChild(w);
+    } else {
+      snap.forEach(doc => {
+        const d = doc.data();
+        addMessage(d.content, d.role === 'user' ? 'user' : 'agent');
+      });
+    }
+  } catch (e) {
+    console.warn('Failed to load messages:', e);
+  }
+}
+
+async function saveMessageToFirestore(role, content) {
+  if (!currentUser || !currentThreadId) return;
+  const uid = currentUser.uid;
+
+  try {
+    const threadRef = db.collection('users').doc(uid)
+      .collection('threads').doc(currentThreadId);
+
+    await threadRef.collection('messages').add({
+      role: role,
+      content: content,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Update thread timestamp
+    await threadRef.update({
+      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn('Failed to save message:', e);
+  }
+}
+
+// ===== Health Check =====
 async function checkHealth() {
   try {
     const r = await fetch(API + '/health');
@@ -456,27 +695,22 @@ async function checkHealth() {
     document.getElementById('stxt').textContent = 'offline';
   }
 }
-checkHealth();
-setInterval(checkHealth, 30000);
 
-// Sidebar + Ticker
+// ===== Sidebar + Ticker =====
 async function loadSummary() {
   try {
-    const r = await fetch(API + '/api/portfolio-summary');
+    const r = await authFetch(API + '/api/portfolio-summary');
     const d = await r.json();
     const holdings = d.holdings || [];
     const perf = d.performance || {};
 
-    // Value — use valueInBaseCurrency (marketValue is always 0 in Ghostfolio)
     const total = holdings.reduce((s, h) => s + (h.valueInBaseCurrency || 0), 0);
     document.getElementById('pv').textContent =
       '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-    // Change — performance is nested under perf.performance
     const el = document.getElementById('pc');
     const perfData = perf.performance || perf;
     const np = perfData.netPerformance || 0;
-    // Try netPerformanceInPercentage from chart, or compute from net worth
     const chart = perf.chart || [];
     let npp = 0;
     if (chart.length >= 2) {
@@ -492,7 +726,6 @@ async function loadSummary() {
       Math.abs(np).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) +
       ' (' + sgn + npp.toFixed(2) + '%) today';
 
-    // Holdings — allocationInPercentage is a decimal (0.10 = 10%)
     const list = document.getElementById('hlist');
     list.innerHTML = '';
     holdings.sort((a, b) => (b.allocationInPercentage || 0) - (a.allocationInPercentage || 0));
@@ -500,7 +733,6 @@ async function loadSummary() {
     holdings.forEach((h, i) => {
       const pct = (h.allocationInPercentage || 0) * 100;
       const val = (h.valueInBaseCurrency || 0);
-      const price = (h.marketPrice || 0);
       const c = COLORS[i % COLORS.length];
       const div = document.createElement('div');
       div.className = 'h-item';
@@ -512,7 +744,6 @@ async function loadSummary() {
       list.appendChild(div);
     });
 
-    // Ticker
     buildTicker(holdings);
   } catch(e) { console.warn('Summary error:', e); }
 }
@@ -524,7 +755,6 @@ function buildTicker(h) {
   for (let r = 0; r < 3; r++) {
     h.forEach(x => {
       const price = (x.marketPrice || 0);
-      const pct = (x.allocationInPercentage || 0) * 100;
       const perf = (x.netPerformancePercent || 0) * 100;
       const perfClass = perf >= 0 ? 'up' : 'down';
       const perfSign = perf >= 0 ? '+' : '';
@@ -537,10 +767,7 @@ function buildTicker(h) {
   t.innerHTML = html;
 }
 
-loadSummary();
-setInterval(loadSummary, 60000);
-
-// Rich formatting
+// ===== Rich Formatting =====
 function formatResponse(text) {
   const lines = text.split('\n');
   let out = [], inTbl = false, tRows = [];
@@ -591,15 +818,15 @@ function fmtLine(l) {
   return l;
 }
 
-// Messages
+// ===== Messages =====
 function addMessage(text, type, debugInfo) {
-  if (welcome) welcome.style.display = 'none';
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
   const div = document.createElement('div');
   div.className = 'message ' + type;
   if (type === 'agent') {
     let html = '<div class="content">' + formatResponse(text).replace(/\n/g, '<br>') + '</div>';
 
-    // Add debug panel with tool calls + verification
     if (debugInfo && debugInfo.tools_called && debugInfo.tools_called.length > 0) {
       const tools = debugInfo.tools_called;
       const v = debugInfo.verification || {};
@@ -607,8 +834,6 @@ function addMessage(text, type, debugInfo) {
       const badgeClass = vPass ? 'pass' : 'warn';
       const badgeText = vPass ? 'VERIFIED' : 'WARNING';
       const uid = 'dbg-' + Math.random().toString(36).substr(2, 6);
-
-      // Confidence badge
       const conf = debugInfo.confidence || 'medium';
       const confLabel = conf.toUpperCase();
 
@@ -635,7 +860,6 @@ function addMessage(text, type, debugInfo) {
             w.replace(/</g, '&lt;') + '</div>';
         });
       }
-      // Citations
       const cites = debugInfo.citations || [];
       if (cites.length > 0) {
         html += '<div class="citations">Sources: <span>' + cites.join(', ') + '</span></div>';
@@ -657,7 +881,7 @@ function toggleDebug(id, el) {
   if (panel) { panel.classList.toggle('open'); el.classList.toggle('open'); }
 }
 
-// Thinking indicator
+// ===== Thinking Indicator =====
 let thinkInt = null;
 function showThinking() {
   const div = document.createElement('div');
@@ -683,19 +907,23 @@ function hideThinking() {
   if (el) el.remove();
 }
 
-// Send
+// ===== Send Message =====
 async function sendMessage() {
   const text = input.value.trim();
-  if (!text) return;
+  if (!text || !currentThreadId) return;
   input.value = ''; input.style.height = 'auto';
   sendBtn.disabled = true;
   addMessage(text, 'user');
+
+  // Save user message to Firestore
+  saveMessageToFirestore('user', text);
+
   showThinking();
   try {
-    const r = await fetch(API + '/query', {
+    const r = await authFetch(API + '/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, thread_id: threadId }),
+      body: JSON.stringify({ message: text, thread_id: currentThreadId }),
     });
     hideThinking();
     if (!r.ok) {
@@ -709,6 +937,9 @@ async function sendMessage() {
         citations: data.citations || [],
         confidence: data.confidence || 'medium',
       });
+
+      // Save agent response to Firestore
+      saveMessageToFirestore('agent', data.response);
       loadSummary();
     }
   } catch (e) {
@@ -719,7 +950,7 @@ async function sendMessage() {
   input.focus();
 }
 
-// Suggestions
+// ===== Suggestions =====
 document.querySelectorAll('.sug').forEach(el => {
   el.addEventListener('click', () => { input.value = el.dataset.q; sendMessage(); });
 });
