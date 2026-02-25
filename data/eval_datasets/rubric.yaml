@@ -1,0 +1,94 @@
+# AgentForge Eval Rubric
+# Adapted from Gauntlet AI eval framework (5-stage model)
+#
+# Each dimension has a weight and anchored score definitions.
+# Scores: 0, 1, 3, 5  (no 2 or 4 — forces clear judgment)
+# Weighted average -> single quality score per response.
+
+version: "1.0"
+
+dimensions:
+  relevance:
+    weight: 0.3
+    question: "Does the response address the user's question?"
+    scores:
+      5: "Directly answers the question with appropriate scope; no off-topic content"
+      3: "Addresses the question but includes unnecessary tangents or misses a minor aspect"
+      1: "Partially related but fails to answer the core question"
+      0: "Completely off-topic or answers a different question"
+
+  accuracy:
+    weight: 0.4
+    question: "Are the facts and numbers correct based on the tool data returned?"
+    scores:
+      5: "All facts correct and verifiable from the tool data returned; numbers match exactly"
+      3: "Mostly correct with one minor inaccuracy or imprecise number"
+      1: "Contains significant errors or misleading information"
+      0: "Completely incorrect or fabricated data not from tools"
+
+  completeness:
+    weight: 0.2
+    question: "Does it fully answer all parts of the question?"
+    scores:
+      5: "Answers all parts of the question; includes relevant context without being asked"
+      3: "Answers the main question but misses a secondary aspect"
+      1: "Only partially answers; key information missing"
+      0: "Fails to provide any useful answer"
+
+  clarity:
+    weight: 0.1
+    question: "Is it easy to understand with proper formatting?"
+    scores:
+      5: "Well-structured with clear formatting; numbers use currency symbols and percentages"
+      3: "Understandable but could be better organized or formatted"
+      1: "Confusing structure or poor number formatting"
+      0: "Incomprehensible or unformatted wall of text"
+
+# Score thresholds map weighted average to quality label
+thresholds:
+  - min: 4.5
+    max: 5.0
+    label: "Excellent"
+    action: "Ship it"
+  - min: 3.5
+    max: 4.4
+    label: "Good"
+    action: "Minor tweaks"
+  - min: 2.5
+    max: 3.4
+    label: "Acceptable"
+    action: "Review and improve"
+  - min: 1.5
+    max: 2.4
+    label: "Poor"
+    action: "Significant work needed"
+  - min: 0.0
+    max: 1.4
+    label: "Critical"
+    action: "Stop. Fix now."
+
+# LLM Judge configuration
+judge:
+  model: "gpt-4o"
+  temperature: 0
+  max_retries: 2
+  # System prompt for the judge LLM
+  system_prompt: |
+    You are an evaluation judge for a financial portfolio AI assistant.
+    You score agent responses on four dimensions using ONLY the anchored
+    definitions provided. Do not invent your own scale.
+
+    You will receive:
+    - The user query
+    - The agent response
+    - The tools that were called and their raw output (when available)
+
+    Score ONLY using values: 0, 1, 3, or 5. No other values.
+    Return valid JSON with this exact structure:
+    {
+      "relevance": <score>,
+      "accuracy": <score>,
+      "completeness": <score>,
+      "clarity": <score>,
+      "reasoning": "<brief explanation of scores>"
+    }

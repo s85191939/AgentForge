@@ -18,26 +18,84 @@ AgentForge Finance is a LangChain/LangGraph-based AI agent that connects to a Gh
 - Import new activities with preview + confirmation safety
 - View account details and user settings
 - Multi-turn memory (remembers context within a conversation)
+- Renamable chat threads with auto-deduplication
+- Live portfolio ticker bar with real-time prices
 
 ## Architecture
 
 ```
-Browser / CLI
-     |
-     v
- FastAPI Server (Python)
-     |
-     v
- LangGraph ReAct Agent (GPT-4o)
-     |
-     v
- Ghostfolio REST API
-     |
-     v
- PostgreSQL + Redis
+User (Browser / CLI)
+        |
+        v
+  FastAPI Server (Python 3.11)
+        |
+        v
+  LangGraph ReAct Agent (GPT-4o)
+    |                    |
+    v                    v
+  OpenAI API         OpenRouter API
+  (primary)          (fallback on 429)
+        |
+        v
+  Ghostfolio REST API (NestJS + Angular)
+    |            |           |
+    v            v           v
+  PostgreSQL   Redis    Market Data
+  (Prisma)    (cache)   (providers)
 ```
 
 The agent runs as a **separate service** that communicates with Ghostfolio via its REST API. This architecture avoids AGPL-3.0 license obligations and leverages Python's AI/ML ecosystem.
+
+## Tech Stack
+
+### Agent Layer (Python)
+
+| Component | Technology | Purpose |
+|---|---|---|
+| **Agent Framework** | [LangChain](https://python.langchain.com/) + [LangGraph](https://langchain-ai.github.io/langgraph/) | ReAct agent pattern with autonomous reason-act-observe loop |
+| **LLM** | OpenAI GPT-4o | Primary language model for tool selection and response generation |
+| **LLM Fallback** | [OpenRouter](https://openrouter.ai/) | Automatic fallback via `with_fallbacks()` on 429 rate limits |
+| **API Server** | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) | Async HTTP server with middleware, CORS, health checks |
+| **HTTP Client** | [httpx](https://www.python-httpx.org/) (async) + [tenacity](https://github.com/jd/tenacity) (retry) | Auto-auth, exponential backoff, 401 re-auth |
+| **Config** | [Pydantic Settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) | Type-safe env var loading with field validators |
+| **Chat Persistence** | [asyncpg](https://github.com/MagicStack/asyncpg) + PostgreSQL | Multi-thread chat history with full message metadata |
+| **Agent Memory** | LangGraph `MemorySaver` | Per-thread conversation context for multi-turn reasoning |
+
+### Observability
+
+| Tool | Purpose |
+|---|---|
+| [LangSmith](https://smith.langchain.com/) | Tracing every agent call — tool selection, LLM reasoning, latency, token usage. Native LangChain integration via `LANGCHAIN_TRACING_V2=true`. |
+| Tool Call Debug Panel | In-app collapsible panel showing tools called, result previews, verification status, and confidence for every response. |
+
+### Target Application (Ghostfolio Fork)
+
+| Component | Technology | Purpose |
+|---|---|---|
+| **Backend** | [NestJS](https://nestjs.com/) (TypeScript) | REST API for portfolio data, orders, accounts |
+| **Frontend** | [Angular](https://angular.io/) | Wealth management web UI |
+| **ORM** | [Prisma](https://www.prisma.io/) | Database access layer |
+| **Database** | PostgreSQL | Persistent storage for users, orders, market data |
+| **Cache** | Redis | Session store and data caching |
+| **Monorepo** | [Nx](https://nx.dev/) | Build system for the NestJS + Angular workspace |
+
+### Infrastructure
+
+| Component | Technology |
+|---|---|
+| **Deployment** | [Railway](https://railway.app) (4 services: Agent, Ghostfolio, PostgreSQL, Redis) |
+| **Containerization** | Docker (Dockerfile for agent, Docker Compose for local dev) |
+| **CI/Testing** | pytest + pytest-asyncio + respx (19 unit tests) |
+
+### Why LangChain + LangGraph?
+
+We chose LangChain/LangGraph over alternatives (CrewAI, AutoGen, Semantic Kernel) because:
+
+1. **Native tool integration** — LangChain's `@tool` decorator maps directly to Ghostfolio API endpoints with type-safe schemas
+2. **ReAct agent pattern** — LangGraph's `create_react_agent` handles the reason-act-observe loop with built-in tool calling
+3. **Fallback chains** — `with_fallbacks()` lets us chain OpenAI and OpenRouter for rate limit resilience
+4. **Observability** — LangSmith tracing is zero-config (just set env vars)
+5. **Ecosystem** — largest community, best docs, most examples for financial AI agents
 
 ## Quick Start
 
@@ -82,16 +140,10 @@ Copy `.env.example` to `.env` and fill in the values:
 | `GHOSTFOLIO_SECURITY_TOKEN` | Yes | Security token from Ghostfolio settings |
 | `OPENAI_API_KEY` | Yes | OpenAI API key for GPT-4o |
 | `OPENAI_MODEL` | No | LLM model to use (default: `gpt-4o`) |
+| `OPENROUTER_API_KEY` | No | OpenRouter API key for rate-limit fallback |
 | `LANGCHAIN_TRACING_V2` | No | Enable LangSmith tracing (default: `true`) |
 | `LANGCHAIN_API_KEY` | No | LangSmith API key for observability |
 | `LANGCHAIN_PROJECT` | No | LangSmith project name (default: `agentforge-finance`) |
-
-### Getting a Ghostfolio Security Token
-
-1. Open your Ghostfolio instance in a browser
-2. Go to **Settings** (gear icon)
-3. Under **Security Token**, copy the token
-4. Paste it as `GHOSTFOLIO_SECURITY_TOKEN` in your `.env`
 
 ## Usage
 
@@ -102,7 +154,10 @@ Navigate to `http://localhost:8000` (local) or the [live URL](https://lovely-vit
 - Suggestion buttons for common queries
 - Health status indicator (green = Ghostfolio connected)
 - Multi-turn conversation memory per thread
-- Markdown-formatted responses
+- Renamable chat threads (click title to edit)
+- Collapsible tool call debug panel on every response
+- Live portfolio ticker bar with real-time prices
+- Markdown-formatted responses with syntax highlighting
 
 ### CLI
 
@@ -110,8 +165,6 @@ Navigate to `http://localhost:8000` (local) or the [live URL](https://lovely-vit
 source .venv/bin/activate
 python -m agent.cli
 ```
-
-Type natural language queries and press Enter. Type `quit` or `exit` to stop.
 
 ### API (cURL)
 
@@ -125,60 +178,13 @@ curl -X POST https://lovely-vitality-production-fdc1.up.railway.app/query \
   -d '{"message": "What are my holdings?", "thread_id": "my-session"}'
 ```
 
-### Example Queries
-
-- "What are my current holdings?"
-- "Show me my portfolio performance"
-- "How much AAPL do I own?"
-- "List my recent transactions"
-- "Look up the symbol for Tesla"
-- "What is my portfolio allocation?"
-
-## Project Structure
-
-```
-AgentForge/
-├── agent/
-│   ├── config/
-│   │   └── settings.py        # Pydantic settings (env vars)
-│   ├── core/
-│   │   ├── agent.py           # LangGraph ReAct agent + AsyncSqliteSaver
-│   │   ├── client.py          # Ghostfolio HTTP client (auto-auth, retry)
-│   │   ├── verification.py    # Domain-specific response verification
-│   │   └── formatter.py       # Output formatter (citations + confidence)
-│   ├── tools/
-│   │   ├── __init__.py        # ALL_TOOLS export (11 tools)
-│   │   ├── auth.py            # authenticate, health_check
-│   │   ├── portfolio.py       # holdings, performance, details
-│   │   ├── orders.py          # get_orders, preview_import, import_activities
-│   │   ├── accounts.py        # get_accounts
-│   │   ├── symbols.py         # lookup_symbol
-│   │   └── user.py            # get_user_settings
-│   ├── static/
-│   │   └── index.html         # Chat web UI
-│   ├── main.py                # FastAPI server
-│   └── cli.py                 # Interactive CLI
-├── tests/
-│   ├── unit/                  # 19 unit tests (mocked API)
-│   ├── integration/           # E2E tests (live Ghostfolio)
-│   └── eval/                  # Agent evaluation suite
-├── scripts/
-│   └── seed_data.py           # Seed demo portfolio (9 transactions)
-├── data/eval_datasets/        # Evaluation query datasets
-├── docker/
-│   └── docker-compose.yml     # Ghostfolio + PostgreSQL + Redis
-├── Dockerfile                 # Agent service container
-├── railway.toml               # Railway deployment config
-└── pyproject.toml             # Python project config
-```
-
 ## Agent Tools
 
 | Tool | Description | Read/Write |
 |---|---|---|
 | `authenticate` | Authenticate with Ghostfolio (auto-called) | Read |
 | `health_check` | Check Ghostfolio connectivity | Read |
-| `get_portfolio_holdings` | List all portfolio holdings | Read |
+| `get_portfolio_holdings` | List all portfolio holdings with live prices | Read |
 | `get_portfolio_performance` | Get portfolio performance metrics | Read |
 | `get_portfolio_details` | Get detailed portfolio breakdown | Read |
 | `get_orders` | List transaction history | Read |
@@ -190,8 +196,14 @@ AgentForge/
 
 ## Key Features
 
+### Tool Call Debug Panel
+Every agent response includes a collapsible debug panel showing which tools were called, a preview of each tool's raw output, verification status (VERIFIED/WARNING), and a confidence badge (HIGH/MEDIUM/LOW). Click the "N tools called" bar below any response to expand.
+
 ### Auto-Authentication
 The HTTP client automatically authenticates on the first API call and re-authenticates on 401 responses. No manual auth step needed.
+
+### OpenRouter Fallback
+When OpenAI returns 429 (rate limit), the agent automatically retries via OpenRouter using the same model (`gpt-4o`). Uses LangChain's `with_fallbacks()` — zero downtime, same quality.
 
 ### Retry with Backoff
 All API calls use [tenacity](https://github.com/jd/tenacity) with 3 attempts and exponential backoff for `ConnectError` and `ReadTimeout`.
@@ -201,8 +213,8 @@ Write operations (importing activities) require a two-step process:
 1. Call `preview_import` to validate and preview the data
 2. Call `import_activities` with `confirmed=True` to execute
 
-### Persistent Memory
-Uses LangGraph's `AsyncSqliteSaver` checkpointer backed by SQLite — conversation history persists across server restarts. Each `thread_id` maintains its own isolated conversation history.
+### Persistent Chat History
+Chat threads are stored in PostgreSQL via asyncpg. Each thread has a title (renamable), message history with metadata (tools called, verification status), and timestamps. Auto-deduplicates "New Chat" names.
 
 ### Verification Layer
 Every response runs through domain-specific checks: numeric consistency (allocation sums), prohibited financial advice detection, and tool-data completeness verification.
@@ -210,23 +222,23 @@ Every response runs through domain-specific checks: numeric consistency (allocat
 ### Output Formatter
 Responses include data source citations (which Ghostfolio endpoints provided the data) and a confidence level (high/medium/low) based on tool coverage and data quality.
 
-## Core Agent Architecture
-
-| Component | Status | Description |
-|---|---|---|
-| **Reasoning Engine** | LangGraph ReAct | GPT-4o with autonomous reason-act-observe loop |
-| **Tool Registry** | 11 tools | Auto-discovered, type-safe Ghostfolio API tools |
-| **Memory System** | SQLite persistent | Cross-session conversation history via `AsyncSqliteSaver` |
-| **Orchestrator** | FastAPI | Async HTTP server with middleware, error handling, health checks |
-| **Verification Layer** | 3 check types | Numeric consistency, prohibited advice, tool-data completeness |
-| **Output Formatter** | Citations + confidence | Data source attribution and confidence estimation |
-
 ## Evaluation Suite
 
-The eval dataset (`data/eval_datasets/sample_queries.json`) contains **70 queries** across 9 categories with difficulty ratings. See the [Eval Dataset README](data/eval_datasets/README.md) for full schema documentation.
+**[Eval Dataset](data/eval_datasets/sample_queries.json)** | **[Eval Runner](tests/eval/run_eval.py)** | **[Rubric Config](data/eval_datasets/rubric.yaml)** | **[Dataset Docs](data/eval_datasets/README.md)**
+
+70 eval queries across 10 categories, 46 subcategories, and 3 difficulty levels. All checks are **deterministic** (zero API cost, zero ambiguity):
+
+| Check | What it verifies | Example |
+|---|---|---|
+| **Tool match** | Agent called the correct tool(s) | "What are my holdings?" should call `get_portfolio_holdings` |
+| **Keyword match** | Response contains expected terms | Response to holdings query should contain "holdings" or "shares" |
+| **Exclusion check** | Response avoids prohibited phrases | Agent should NOT say "I don't know" or "financial advice" |
+| **Coverage matrix** | Subcategory x difficulty grid | Shows which areas have test gaps |
+
+### Running Evals
 
 ```bash
-# Run all evaluations
+# Run all 70 queries
 python tests/eval/run_eval.py
 
 # Filter by category or difficulty
@@ -235,11 +247,42 @@ python tests/eval/run_eval.py --difficulty hard
 
 # Export results to JSON
 python tests/eval/run_eval.py --output eval_results.json
+
+# A/B experiment tracking
+python tests/eval/run_eval.py --variant new_prompt --output new_prompt.json
 ```
 
-**Eval categories:** `portfolio_read`, `performance`, `transactions`, `search`, `accounts`, `import`, `general`, `edge_case`, `multi_tool`
+### Latest Results (87% pass rate)
 
-**Scoring:** Tool match accuracy (did the agent call the right tools?) + keyword match (does the response contain expected terms?) + latency tracking.
+```
+  Tool Match:       61/70 passed (87%)
+  Keyword Match:    66/70 passed (94%)
+  Exclusion Check:  70/70 passed (100%)
+  Total Time:       550.4s (7.9s avg per query)
+  Zero 429 rate limit errors (OpenRouter fallback active)
+```
+
+**Eval categories:** `portfolio_read`, `performance`, `transaction_history`, `symbol_lookup`, `accounts`, `allocation`, `risk_analysis`, `import`, `system`, `settings`, `multi_tool`
+
+## Ghostfolio Fork Enhancements
+
+**[Forked Repo](https://github.com/s85191939/ghostfolio)**
+
+We added the following endpoints to the Ghostfolio NestJS backend:
+
+### Portfolio Analytics Module (`/api/v1/analytics`)
+Server-side computed risk metrics that Ghostfolio doesn't natively provide:
+- **Concentration risk** — Herfindahl-Hirschman Index (HHI), top holding identification, high-concentration flag
+- **Diversification score** — 0-100 composite score based on holdings breadth, asset class variety, and allocation evenness
+- **Asset allocation breakdown** — by asset class with weights and values
+- **Auto-generated insights** — human-readable risk warnings and observations
+
+### AI Summary Endpoint (`/api/v1/ai/summary`)
+Structured JSON response designed for AI agent consumption:
+- Full holdings list with live prices, allocation percentages, asset classes
+- Concentration and diversification metrics (computed server-side)
+- Insight strings ready for the agent to relay to users
+- Base currency and computation timestamp
 
 ## Testing
 
@@ -251,7 +294,7 @@ python -m pytest tests/unit -v
 # Run integration tests (requires live Ghostfolio)
 python -m pytest tests/integration -v -m integration
 
-# Run evaluation suite (see above)
+# Run evaluation suite (see Evaluation Suite above)
 python tests/eval/run_eval.py
 ```
 
@@ -261,32 +304,52 @@ The project is deployed on [Railway](https://railway.app) with 4 services:
 
 | Service | Description |
 |---|---|
-| **Agent** (lovely-vitality) | FastAPI + LangGraph agent |
-| **Ghostfolio** | Wealth management app (Docker image) |
-| **PostgreSQL** | Database for Ghostfolio |
+| **Agent** (lovely-vitality) | FastAPI + LangGraph agent (Python 3.11) |
+| **Ghostfolio** | Wealth management app (NestJS + Angular, Docker image) |
+| **PostgreSQL** | Database for Ghostfolio + chat persistence |
 | **Redis** | Cache/session store for Ghostfolio |
 
-### Deploy your own
+## Project Structure
 
-1. Install the [Railway CLI](https://docs.railway.app/guides/cli)
-2. `railway login`
-3. `railway init` to create a project
-4. Add PostgreSQL and Redis databases
-5. Add Ghostfolio service with `ghostfolio/ghostfolio:latest` image
-6. Set environment variables (see Configuration above)
-7. Deploy the agent: `railway up`
-
-## Tech Stack
-
-- **Agent Framework:** LangChain + LangGraph (ReAct agent pattern)
-- **LLM:** OpenAI GPT-4o (configurable)
-- **API Server:** FastAPI + Uvicorn
-- **HTTP Client:** httpx (async) + tenacity (retry)
-- **Config:** Pydantic Settings (with field validators)
-- **Observability:** LangSmith
-- **Target App:** Ghostfolio (self-hosted, Docker)
-- **Deployment:** Railway (multi-service)
-- **Testing:** pytest + pytest-asyncio + respx
+```
+AgentForge/
+├── agent/
+│   ├── config/
+│   │   └── settings.py        # Pydantic settings (env vars)
+│   ├── core/
+│   │   ├── agent.py           # LangGraph ReAct agent + OpenRouter fallback
+│   │   ├── client.py          # Ghostfolio HTTP client (auto-auth, retry)
+│   │   ├── database.py        # PostgreSQL chat persistence (asyncpg)
+│   │   ├── verification.py    # Domain-specific response verification
+│   │   └── formatter.py       # Output formatter (citations + confidence)
+│   ├── tools/
+│   │   ├── __init__.py        # ALL_TOOLS export (11 tools)
+│   │   ├── auth.py            # authenticate, health_check
+│   │   ├── portfolio.py       # holdings, performance, details
+│   │   ├── orders.py          # get_orders, preview_import, import_activities
+│   │   ├── accounts.py        # get_accounts
+│   │   ├── symbols.py         # lookup_symbol
+│   │   └── user.py            # get_user_settings
+│   ├── static/
+│   │   └── index.html         # Chat web UI (debug panel, ticker, threads)
+│   ├── main.py                # FastAPI server
+│   └── cli.py                 # Interactive CLI
+├── tests/
+│   ├── unit/                  # 19 unit tests (mocked API)
+│   ├── integration/           # E2E tests (live Ghostfolio)
+│   └── eval/
+│       └── run_eval.py        # Eval runner (binary checks + coverage matrix)
+├── data/eval_datasets/
+│   ├── sample_queries.json    # 70 eval queries (10 categories, 3 difficulties)
+│   └── rubric.yaml            # Rubric config with anchored score definitions
+├── scripts/
+│   └── seed_data.py           # Seed demo portfolio (9 transactions)
+├── docker/
+│   └── docker-compose.yml     # Ghostfolio + PostgreSQL + Redis
+├── Dockerfile                 # Agent service container
+├── railway.toml               # Railway deployment config
+└── pyproject.toml             # Python project config
+```
 
 ## License
 

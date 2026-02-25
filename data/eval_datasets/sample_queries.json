@@ -4,8 +4,10 @@
     "query": "What are my current holdings?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "holdings_list",
     "difficulty": "easy",
     "expected_response_contains": ["holdings", "shares"],
+    "expected_response_excludes": ["I don't know", "I cannot"],
     "description": "Basic portfolio holdings retrieval"
   },
   {
@@ -14,8 +16,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "ytd"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["performance", "return"],
+    "expected_response_excludes": ["I don't have access", "unable to"],
     "description": "Year-to-date performance query"
   },
   {
@@ -23,8 +27,10 @@
     "query": "Am I too concentrated in any single stock?",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "concentration",
     "difficulty": "medium",
     "expected_response_contains": ["concentration", "allocation"],
+    "expected_response_excludes": ["financial advice", "I recommend you buy"],
     "description": "Concentration risk assessment requiring portfolio analysis"
   },
   {
@@ -32,8 +38,10 @@
     "query": "Show me all my dividend transactions from the past year",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "filtered_orders",
     "difficulty": "medium",
     "expected_response_contains": ["dividend"],
+    "expected_response_excludes": [],
     "description": "Filtered transaction query for dividends only"
   },
   {
@@ -42,8 +50,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "Tesla"},
     "category": "symbol_lookup",
+    "subcategory": "company_to_ticker",
     "difficulty": "easy",
     "expected_response_contains": ["TSLA"],
+    "expected_response_excludes": ["I don't know"],
     "description": "Simple company-to-ticker symbol lookup"
   },
   {
@@ -51,8 +61,10 @@
     "query": "What is my asset allocation breakdown by class?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "asset_class",
     "difficulty": "medium",
     "expected_response_contains": ["allocation"],
+    "expected_response_excludes": [],
     "description": "Asset class breakdown requiring portfolio detail parsing"
   },
   {
@@ -60,8 +72,10 @@
     "query": "Which of my accounts has the highest value?",
     "expected_tools": ["get_accounts"],
     "category": "accounts",
+    "subcategory": "account_comparison",
     "difficulty": "easy",
     "expected_response_contains": ["account"],
+    "expected_response_excludes": [],
     "description": "Account comparison query"
   },
   {
@@ -69,8 +83,10 @@
     "query": "Compare my 1-year vs 5-year performance",
     "expected_tools": ["get_portfolio_performance"],
     "category": "performance",
+    "subcategory": "multi_period",
     "difficulty": "medium",
     "expected_response_contains": ["performance"],
+    "expected_response_excludes": [],
     "description": "Multi-timeframe performance comparison requiring multiple tool calls"
   },
   {
@@ -78,8 +94,10 @@
     "query": "I bought 5 shares of MSFT at $420 on January 10, 2025. Can you record that?",
     "expected_tools": ["preview_import"],
     "category": "import",
+    "subcategory": "buy_transaction",
     "difficulty": "medium",
     "expected_response_contains": ["preview", "MSFT"],
+    "expected_response_excludes": ["successfully imported", "confirmed"],
     "description": "Transaction import with human-in-the-loop preview"
   },
   {
@@ -87,8 +105,10 @@
     "query": "What percentage of my portfolio is in cryptocurrency?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "asset_class",
     "difficulty": "medium",
     "expected_response_contains": ["crypto", "percentage"],
+    "expected_response_excludes": [],
     "description": "Asset class filtering for cryptocurrency exposure"
   },
   {
@@ -96,8 +116,10 @@
     "query": "Show me my portfolio summary",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "summary",
     "difficulty": "easy",
     "expected_response_contains": ["portfolio"],
+    "expected_response_excludes": ["error", "failed"],
     "description": "General portfolio summary request"
   },
   {
@@ -105,8 +127,10 @@
     "query": "How much Apple stock do I own?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "single_position",
     "difficulty": "easy",
     "expected_response_contains": ["AAPL", "share"],
+    "expected_response_excludes": [],
     "description": "Single-stock position lookup"
   },
   {
@@ -114,8 +138,10 @@
     "query": "What is my total portfolio value?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "total_value",
     "difficulty": "easy",
     "expected_response_contains": ["value", "$"],
+    "expected_response_excludes": ["I cannot calculate"],
     "description": "Total portfolio valuation query"
   },
   {
@@ -123,8 +149,10 @@
     "query": "List all stocks I currently hold",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "holdings_list",
     "difficulty": "easy",
     "expected_response_contains": ["hold"],
+    "expected_response_excludes": [],
     "description": "Full stock listing query"
   },
   {
@@ -132,8 +160,10 @@
     "query": "Do I own any ETFs?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "filtered_holdings",
     "difficulty": "easy",
     "expected_response_contains": ["ETF"],
+    "expected_response_excludes": [],
     "description": "Filtered holdings query for ETF asset type"
   },
   {
@@ -142,8 +172,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "1m"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["return", "month"],
+    "expected_response_excludes": [],
     "description": "One-month performance with temporal reasoning"
   },
   {
@@ -152,8 +184,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "3m"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["performance"],
+    "expected_response_excludes": [],
     "description": "Three-month performance with temporal reasoning"
   },
   {
@@ -162,8 +196,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "max"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["performance"],
+    "expected_response_excludes": [],
     "description": "Maximum time range performance query"
   },
   {
@@ -172,8 +208,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "1w"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["week"],
+    "expected_response_excludes": [],
     "description": "Weekly performance with colloquial language"
   },
   {
@@ -182,8 +220,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "1d"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["today"],
+    "expected_response_excludes": [],
     "description": "Daily performance with casual phrasing"
   },
   {
@@ -191,8 +231,10 @@
     "query": "Show me all my buy transactions",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "filtered_orders",
     "difficulty": "easy",
     "expected_response_contains": ["buy", "transaction"],
+    "expected_response_excludes": [],
     "description": "Filtered order retrieval for buy type"
   },
   {
@@ -200,8 +242,10 @@
     "query": "When did I last sell a stock?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "temporal_query",
     "difficulty": "medium",
     "expected_response_contains": ["sell"],
+    "expected_response_excludes": [],
     "description": "Temporal reasoning over transaction history"
   },
   {
@@ -209,8 +253,10 @@
     "query": "How many transactions have I made this year?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "aggregation",
     "difficulty": "medium",
     "expected_response_contains": ["transaction"],
+    "expected_response_excludes": [],
     "description": "Aggregation query over time-filtered transactions"
   },
   {
@@ -218,8 +264,10 @@
     "query": "Show me my complete transaction history",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "full_history",
     "difficulty": "easy",
     "expected_response_contains": ["transaction"],
+    "expected_response_excludes": [],
     "description": "Full unfiltered order history retrieval"
   },
   {
@@ -227,8 +275,10 @@
     "query": "What was my largest single purchase?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "superlative",
     "difficulty": "medium",
     "expected_response_contains": ["largest", "purchase"],
+    "expected_response_excludes": [],
     "description": "Superlative query requiring max-value computation over orders"
   },
   {
@@ -237,8 +287,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "NVIDIA"},
     "category": "symbol_lookup",
+    "subcategory": "company_to_ticker",
     "difficulty": "easy",
     "expected_response_contains": ["NVDA"],
+    "expected_response_excludes": [],
     "description": "Company name to ticker resolution"
   },
   {
@@ -247,8 +299,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "Amazon"},
     "category": "symbol_lookup",
+    "subcategory": "company_to_ticker",
     "difficulty": "easy",
     "expected_response_contains": ["AMZN"],
+    "expected_response_excludes": [],
     "description": "Well-known company symbol lookup"
   },
   {
@@ -257,8 +311,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "Vanguard Total Stock Market"},
     "category": "symbol_lookup",
+    "subcategory": "etf_lookup",
     "difficulty": "easy",
     "expected_response_contains": ["VTI"],
+    "expected_response_excludes": [],
     "description": "ETF full-name to symbol lookup"
   },
   {
@@ -267,8 +323,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "bond ETF"},
     "category": "symbol_lookup",
+    "subcategory": "open_search",
     "difficulty": "easy",
     "expected_response_contains": ["bond"],
+    "expected_response_excludes": [],
     "description": "Open-ended asset class search query"
   },
   {
@@ -277,8 +335,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "Bitcoin"},
     "category": "symbol_lookup",
+    "subcategory": "crypto_lookup",
     "difficulty": "easy",
     "expected_response_contains": ["BTC"],
+    "expected_response_excludes": [],
     "description": "Cryptocurrency symbol lookup"
   },
   {
@@ -286,8 +346,10 @@
     "query": "List all my investment accounts",
     "expected_tools": ["get_accounts"],
     "category": "accounts",
+    "subcategory": "account_list",
     "difficulty": "easy",
     "expected_response_contains": ["account"],
+    "expected_response_excludes": [],
     "description": "Full account listing"
   },
   {
@@ -295,8 +357,10 @@
     "query": "How many accounts do I have?",
     "expected_tools": ["get_accounts"],
     "category": "accounts",
+    "subcategory": "account_count",
     "difficulty": "easy",
     "expected_response_contains": ["account"],
+    "expected_response_excludes": [],
     "description": "Account count aggregation"
   },
   {
@@ -304,8 +368,10 @@
     "query": "Show me the details of my accounts",
     "expected_tools": ["get_accounts"],
     "category": "accounts",
+    "subcategory": "account_details",
     "difficulty": "easy",
     "expected_response_contains": ["account"],
+    "expected_response_excludes": [],
     "description": "Detailed account information retrieval"
   },
   {
@@ -313,8 +379,10 @@
     "query": "What is my equity vs bond allocation?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "asset_class",
     "difficulty": "medium",
     "expected_response_contains": ["equity", "bond"],
+    "expected_response_excludes": ["you should buy", "I recommend"],
     "description": "Two-class allocation comparison"
   },
   {
@@ -322,8 +390,10 @@
     "query": "Which sector am I most invested in?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "sector",
     "difficulty": "medium",
     "expected_response_contains": ["sector"],
+    "expected_response_excludes": [],
     "description": "Sector analysis with superlative query"
   },
   {
@@ -331,8 +401,10 @@
     "query": "What percentage of my portfolio is in tech stocks?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "sector",
     "difficulty": "medium",
     "expected_response_contains": ["tech", "percentage"],
+    "expected_response_excludes": [],
     "description": "Single-sector allocation filtering"
   },
   {
@@ -340,8 +412,10 @@
     "query": "Show me my portfolio diversification breakdown",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "diversification",
     "difficulty": "medium",
     "expected_response_contains": ["diversification"],
+    "expected_response_excludes": [],
     "description": "Full diversification analysis"
   },
   {
@@ -349,8 +423,10 @@
     "query": "Am I properly diversified across asset classes?",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "diversification",
     "difficulty": "medium",
     "expected_response_contains": ["diversi"],
+    "expected_response_excludes": ["financial advice"],
     "description": "Subjective risk assessment requiring portfolio judgment"
   },
   {
@@ -358,8 +434,10 @@
     "query": "What is my biggest position by weight?",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "concentration",
     "difficulty": "medium",
     "expected_response_contains": ["position", "weight"],
+    "expected_response_excludes": [],
     "description": "Maximum weight position identification"
   },
   {
@@ -367,8 +445,10 @@
     "query": "Do I have too much exposure to any single sector?",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "sector_exposure",
     "difficulty": "hard",
     "expected_response_contains": ["exposure", "sector"],
+    "expected_response_excludes": ["financial advice", "I recommend you buy"],
     "description": "Sector concentration risk assessment with judgment"
   },
   {
@@ -376,8 +456,10 @@
     "query": "I sold 10 shares of GOOGL at $175 on February 1, 2025. Please record it.",
     "expected_tools": ["preview_import"],
     "category": "import",
+    "subcategory": "sell_transaction",
     "difficulty": "medium",
     "expected_response_contains": ["GOOGL", "sell"],
+    "expected_response_excludes": ["successfully imported", "confirmed"],
     "description": "Sell transaction import with preview safety check"
   },
   {
@@ -385,8 +467,10 @@
     "query": "Record a dividend of $0.50 per share for my 15 shares of AAPL on March 1, 2025",
     "expected_tools": ["preview_import"],
     "category": "import",
+    "subcategory": "dividend_import",
     "difficulty": "hard",
     "expected_response_contains": ["AAPL", "dividend"],
+    "expected_response_excludes": ["successfully imported"],
     "description": "Dividend transaction import with per-share calculation"
   },
   {
@@ -394,8 +478,10 @@
     "query": "I want to add a purchase: 100 shares of VTI at $250 on January 5, 2025",
     "expected_tools": ["preview_import"],
     "category": "import",
+    "subcategory": "buy_transaction",
     "difficulty": "medium",
     "expected_response_contains": ["VTI", "preview"],
+    "expected_response_excludes": ["successfully imported", "confirmed"],
     "description": "ETF purchase import with preview step"
   },
   {
@@ -403,8 +489,10 @@
     "query": "Is Ghostfolio connected and working?",
     "expected_tools": ["health_check"],
     "category": "system",
+    "subcategory": "health",
     "difficulty": "easy",
     "expected_response_contains": ["health", "connect"],
+    "expected_response_excludes": [],
     "description": "Backend connectivity health check"
   },
   {
@@ -412,8 +500,10 @@
     "query": "Check the system health status",
     "expected_tools": ["health_check"],
     "category": "system",
+    "subcategory": "health",
     "difficulty": "easy",
     "expected_response_contains": ["health", "status"],
+    "expected_response_excludes": [],
     "description": "System status verification"
   },
   {
@@ -421,8 +511,10 @@
     "query": "What are my user settings?",
     "expected_tools": ["get_user_settings"],
     "category": "settings",
+    "subcategory": "full_settings",
     "difficulty": "easy",
     "expected_response_contains": ["settings"],
+    "expected_response_excludes": [],
     "description": "User preferences and settings retrieval"
   },
   {
@@ -430,8 +522,10 @@
     "query": "What currency is my portfolio denominated in?",
     "expected_tools": ["get_user_settings"],
     "category": "settings",
+    "subcategory": "specific_setting",
     "difficulty": "medium",
     "expected_response_contains": ["currency"],
+    "expected_response_excludes": [],
     "description": "Specific setting extraction from user preferences"
   },
   {
@@ -439,8 +533,10 @@
     "query": "How much have I invested in MSFT in total?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "aggregation",
     "difficulty": "medium",
     "expected_response_contains": ["MSFT", "total"],
+    "expected_response_excludes": [],
     "description": "Per-symbol aggregation over transaction history"
   },
   {
@@ -449,8 +545,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "mtd"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["month"],
+    "expected_response_excludes": [],
     "description": "Month-to-date performance with financial jargon"
   },
   {
@@ -458,8 +556,10 @@
     "query": "Which holdings are ETFs and which are individual stocks?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "filtered_holdings",
     "difficulty": "medium",
     "expected_response_contains": ["ETF", "stock"],
+    "expected_response_excludes": [],
     "description": "Asset type classification across holdings"
   },
   {
@@ -467,8 +567,10 @@
     "query": "Give me a risk assessment of my portfolio",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "comprehensive_risk",
     "difficulty": "hard",
     "expected_response_contains": ["risk"],
+    "expected_response_excludes": ["financial advice", "I recommend you buy"],
     "description": "Comprehensive risk analysis requiring portfolio judgment"
   },
   {
@@ -477,8 +579,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "wtd"},
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "easy",
     "expected_response_contains": ["week"],
+    "expected_response_excludes": [],
     "description": "Week-to-date performance with financial terminology"
   },
   {
@@ -486,8 +590,10 @@
     "query": "Have I received any dividends?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "filtered_orders",
     "difficulty": "medium",
     "expected_response_contains": ["dividend"],
+    "expected_response_excludes": [],
     "description": "Yes/no question requiring transaction filtering"
   },
   {
@@ -496,8 +602,10 @@
     "expected_tools": ["lookup_symbol"],
     "expected_params": {"query": "S&P 500"},
     "category": "symbol_lookup",
+    "subcategory": "index_lookup",
     "difficulty": "easy",
     "expected_response_contains": ["SPY", "VOO", "500"],
+    "expected_response_excludes": [],
     "description": "Index fund symbol lookup with multiple valid answers"
   },
   {
@@ -505,8 +613,10 @@
     "query": "How many shares of NVDA do I own?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "single_position",
     "difficulty": "easy",
     "expected_response_contains": ["NVDA", "share"],
+    "expected_response_excludes": [],
     "description": "Single-ticker share count retrieval"
   },
   {
@@ -514,8 +624,10 @@
     "query": "Look up the ticker for Microsoft and then show me how much I own",
     "expected_tools": ["lookup_symbol", "get_portfolio_holdings"],
     "category": "multi_tool",
+    "subcategory": "lookup_then_read",
     "difficulty": "medium",
     "expected_response_contains": ["MSFT"],
+    "expected_response_excludes": [],
     "description": "Multi-step query requiring symbol lookup then portfolio check"
   },
   {
@@ -523,8 +635,10 @@
     "query": "What is my best and worst performing position?",
     "expected_tools": ["get_portfolio_details"],
     "category": "performance",
+    "subcategory": "position_comparison",
     "difficulty": "hard",
     "expected_response_contains": ["best", "worst"],
+    "expected_response_excludes": [],
     "description": "Superlative comparison across all positions"
   },
   {
@@ -532,8 +646,10 @@
     "query": "Show me everything: holdings, performance, and account info",
     "expected_tools": ["get_portfolio_holdings", "get_portfolio_performance", "get_accounts"],
     "category": "multi_tool",
+    "subcategory": "comprehensive_dashboard",
     "difficulty": "hard",
     "expected_response_contains": ["holdings", "performance", "account"],
+    "expected_response_excludes": [],
     "description": "Comprehensive dashboard query requiring 3+ tool calls"
   },
   {
@@ -541,8 +657,10 @@
     "query": "How much of my money is in US equities vs international?",
     "expected_tools": ["get_portfolio_details"],
     "category": "allocation",
+    "subcategory": "geographic",
     "difficulty": "hard",
     "expected_response_contains": ["US", "international"],
+    "expected_response_excludes": [],
     "description": "Geographic allocation breakdown requiring data interpretation"
   },
   {
@@ -550,8 +668,10 @@
     "query": "If I sell all my AAPL, how would that change my allocation?",
     "expected_tools": ["get_portfolio_holdings", "get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "hypothetical",
     "difficulty": "hard",
     "expected_response_contains": ["AAPL", "allocation"],
+    "expected_response_excludes": ["financial advice"],
     "description": "Hypothetical scenario requiring multi-tool data and calculation"
   },
   {
@@ -559,8 +679,10 @@
     "query": "What stocks should I look into for dividend income?",
     "expected_tools": ["lookup_symbol"],
     "category": "symbol_lookup",
+    "subcategory": "advisory_search",
     "difficulty": "medium",
     "expected_response_contains": ["dividend"],
+    "expected_response_excludes": ["financial advice"],
     "description": "Open-ended search with investment intent"
   },
   {
@@ -568,8 +690,10 @@
     "query": "How much in fees have I paid on my transactions?",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "aggregation",
     "difficulty": "hard",
     "expected_response_contains": ["fee"],
+    "expected_response_excludes": [],
     "description": "Fee aggregation across all historical orders"
   },
   {
@@ -578,8 +702,10 @@
     "expected_tools": ["get_portfolio_performance"],
     "expected_params": {"range": "5y"},
     "category": "performance",
+    "subcategory": "benchmark_comparison",
     "difficulty": "hard",
     "expected_response_contains": ["performance", "S&P"],
+    "expected_response_excludes": ["financial advice"],
     "description": "Benchmark comparison requiring market knowledge"
   },
   {
@@ -587,8 +713,10 @@
     "query": "What are the top 3 holdings in my portfolio by value?",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "top_n",
     "difficulty": "medium",
     "expected_response_contains": ["top"],
+    "expected_response_excludes": [],
     "description": "Top-N ranking query across holdings"
   },
   {
@@ -596,8 +724,10 @@
     "query": "Calculate my average cost basis for AAPL shares",
     "expected_tools": ["get_orders"],
     "category": "transaction_history",
+    "subcategory": "cost_basis",
     "difficulty": "hard",
     "expected_response_contains": ["AAPL", "cost", "basis"],
+    "expected_response_excludes": [],
     "description": "Per-share cost basis calculation from transaction history"
   },
   {
@@ -605,8 +735,10 @@
     "query": "Tell me about my portfolio in simple terms, like I'm new to investing",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "tone_adapted",
     "difficulty": "medium",
     "expected_response_contains": ["portfolio"],
+    "expected_response_excludes": [],
     "description": "Tone-adapted response requiring simplified financial explanation"
   },
   {
@@ -614,8 +746,10 @@
     "query": "I want to rebalance. What's overweight and what's underweight?",
     "expected_tools": ["get_portfolio_details"],
     "category": "risk_analysis",
+    "subcategory": "rebalancing",
     "difficulty": "hard",
     "expected_response_contains": ["overweight", "underweight"],
+    "expected_response_excludes": ["financial advice"],
     "description": "Rebalancing analysis requiring target allocation comparison"
   },
   {
@@ -623,8 +757,10 @@
     "query": "Whats my p&l this quarter?",
     "expected_tools": ["get_portfolio_performance"],
     "category": "performance",
+    "subcategory": "single_period",
     "difficulty": "medium",
     "expected_response_contains": ["profit", "loss"],
+    "expected_response_excludes": [],
     "description": "Profit/loss query with abbreviation and casual spelling"
   },
   {
@@ -632,8 +768,10 @@
     "query": "yo how are my stonks doing lol",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "slang",
     "difficulty": "medium",
     "expected_response_contains": ["portfolio", "holdings"],
+    "expected_response_excludes": ["I don't understand"],
     "description": "Slang and informal language comprehension test"
   },
   {
@@ -641,8 +779,10 @@
     "query": "Montre-moi mon portefeuille",
     "expected_tools": ["get_portfolio_holdings"],
     "category": "portfolio_read",
+    "subcategory": "non_english",
     "difficulty": "hard",
     "expected_response_contains": ["portfolio", "holdings"],
+    "expected_response_excludes": ["I don't understand"],
     "description": "Non-English query (French) requiring language comprehension"
   }
 ]
