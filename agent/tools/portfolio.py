@@ -6,6 +6,7 @@ import json
 
 from langchain_core.tools import tool
 
+from agent.core.validators import validate_range
 from agent.tools.auth import get_client
 
 
@@ -74,6 +75,11 @@ async def get_portfolio_performance(range: str = "max") -> str:
     Use this when the user asks how their portfolio has performed,
     returns over a period, or gains/losses.
     """
+    try:
+        range = validate_range(range)
+    except ValueError as e:
+        return f"Invalid range parameter: {e}"
+
     client = get_client()
     data = await client.get_portfolio_performance(range_=range)
 
@@ -115,6 +121,11 @@ async def get_portfolio_details(range: str = "max") -> str:
     Use this when the user asks about diversification, asset allocation,
     sector exposure, geographic distribution, or concentration analysis.
     """
+    try:
+        range = validate_range(range)
+    except ValueError as e:
+        return f"Invalid range parameter: {e}"
+
     client = get_client()
     data = await client.get_portfolio_details(range_=range)
 

@@ -6,6 +6,7 @@ import json
 
 from langchain_core.tools import tool
 
+from agent.core.validators import validate_json_payload
 from agent.tools.auth import get_client
 
 
@@ -49,6 +50,11 @@ async def get_orders() -> str:
 
 def _validate_activities(activities_json: str) -> tuple[list[dict] | None, str | None]:
     """Parse and validate activities JSON. Returns (activities, error_message)."""
+    try:
+        activities_json = validate_json_payload(activities_json, "activities JSON")
+    except ValueError as e:
+        return None, f"Error: {e}"
+
     try:
         activities = json.loads(activities_json)
     except json.JSONDecodeError as e:

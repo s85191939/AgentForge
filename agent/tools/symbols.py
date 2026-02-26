@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
+from agent.core.validators import validate_symbol_query
 from agent.tools.auth import get_client
 
 
@@ -30,6 +31,11 @@ async def lookup_symbol(query: str) -> str:
     asset and you need to look up its details or verify it exists
     in Ghostfolio's data sources.
     """
+    try:
+        query = validate_symbol_query(query)
+    except ValueError as e:
+        return f"Invalid symbol query: {e}"
+
     client = get_client()
     data = await client.lookup_symbol(query)
     items = data if isinstance(data, list) else data.get("items", data)

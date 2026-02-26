@@ -155,32 +155,48 @@ async def delete_thread(thread_id: str) -> bool:
 async def save_message(
     thread_id: str, role: str, content: str, metadata: dict | None = None
 ) -> dict | None:
-    """Save a message to a thread. Returns the message dict or None."""
+    """Save a message to a thread. Returns the message dict or None.
+
+    Uses an explicit transaction so that thread creation, message insert,
+    and thread timestamp update are atomic — no partial writes on failure.
+    """
     if not _pool:
         return None
 
-    # Ensure the thread exists (idempotent)
-    await _ensure_thread_exists(thread_id)
-
     meta_json = json.dumps(metadata or {})
-    async with _pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """INSERT INTO agentforge_messages (thread_id, role, content, metadata)
-               VALUES ($1, $2, $3, $4::jsonb)
-               RETURNING id, created_at""",
-            thread_id, role, content, meta_json,
-        )
-        await conn.execute(
-            "UPDATE agentforge_threads SET updated_at = NOW() WHERE id = $1",
-            thread_id,
-        )
-    return {
-        "id": row["id"],
-        "role": role,
-        "content": content,
-        "metadata": metadata or {},
-        "created_at": row["created_at"].isoformat(),
-    }
+    try:
+        async with _pool.acquire() as conn:
+            async with conn.transaction():
+                # Ensure the thread exists (idempotent) — inside txn
+                await conn.execute(
+                    "INSERT INTO agentforge_threads (id) VALUES ($1)"
+                    " ON CONFLICT (id) DO NOTHING",
+                    thread_id,
+                )
+                # Insert the message
+                row = await conn.fetchrow(
+                    """INSERT INTO agentforge_messages
+                           (thread_id, role, content, metadata)
+                       VALUES ($1, $2, $3, $4::jsonb)
+                       RETURNING id, created_at""",
+                    thread_id, role, content, meta_json,
+                )
+                # Update thread timestamp
+                await conn.execute(
+                    "UPDATE agentforge_threads SET updated_at = NOW()"
+                    " WHERE id = $1",
+                    thread_id,
+                )
+        return {
+            "id": row["id"],
+            "role": role,
+            "content": content,
+            "metadata": metadata or {},
+            "created_at": row["created_at"].isoformat(),
+        }
+    except Exception as e:
+        logger.error("Failed to save message (thread=%s): %s", thread_id, e)
+        return None
 
 
 async def load_messages(thread_id: str) -> list[dict]:

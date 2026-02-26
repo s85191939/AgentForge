@@ -14,10 +14,20 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import ToolMessage
+from openai import (
+    APIConnectionError as OpenAIConnectionError,
+)
+from openai import (
+    APITimeoutError as OpenAITimeoutError,
+)
+from openai import (
+    RateLimitError as OpenAIRateLimitError,
+)
 from pydantic import BaseModel, Field
 
 from agent.config.settings import settings
 from agent.core.agent import create_agent
+from agent.core.cache import ResponseCache
 from agent.core.database import (
     close_db,
     create_thread,
@@ -42,6 +52,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger("agentforge")
+
+# ---------------------------------------------------------------------------
+# Response cache — avoids redundant LLM calls for repeated identical queries
+# TTL = 5 minutes, max 128 entries
+# ---------------------------------------------------------------------------
+
+_response_cache = ResponseCache(ttl_seconds=300, max_size=128)
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +267,11 @@ async def query(req: QueryRequest):
     agent = app.state.agent
     langgraph_thread_id = req.thread_id
 
+    # --- Cache check: return cached response for repeated identical queries ---
+    cached = _response_cache.get(req.message, req.thread_id)
+    if cached is not None:
+        return QueryResponse(**cached)
+
     try:
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": req.message}]},
@@ -309,6 +331,18 @@ async def query(req: QueryRequest):
                 },
             )
 
+        response_data = {
+            "response": content,
+            "thread_id": req.thread_id,
+            "tools_called": [tc.model_dump() for tc in tools_called],
+            "verification": {"passed": vr.passed, "warnings": vr.warnings},
+            "citations": formatted.citations,
+            "confidence": formatted.confidence,
+        }
+
+        # Cache the successful response
+        _response_cache.put(req.message, req.thread_id, response_data)
+
         return QueryResponse(
             response=content,
             thread_id=req.thread_id,
@@ -321,6 +355,33 @@ async def query(req: QueryRequest):
             confidence=formatted.confidence,
         )
 
+    # --- Graceful LLM fallback: friendly errors when AI services are down ---
+    except (OpenAIConnectionError, OpenAITimeoutError):
+        logger.error("LLM service unreachable (both primary and fallback)")
+        return QueryResponse(
+            response=(
+                "I'm temporarily unable to process your request because the AI "
+                "service is unreachable. Please try again in a few moments."
+            ),
+            thread_id=req.thread_id,
+            tools_called=[],
+            verification=VerificationInfo(),
+            citations=[],
+            confidence="low",
+        )
+    except OpenAIRateLimitError:
+        logger.error("LLM rate-limited on all providers (OpenAI + OpenRouter)")
+        return QueryResponse(
+            response=(
+                "The AI service is currently experiencing high demand and both "
+                "providers are rate-limited. Please wait a moment and try again."
+            ),
+            thread_id=req.thread_id,
+            tools_called=[],
+            verification=VerificationInfo(),
+            citations=[],
+            confidence="low",
+        )
     except httpx.ConnectError:
         logger.error("Cannot reach Ghostfolio instance")
         raise HTTPException(
@@ -334,7 +395,27 @@ async def query(req: QueryRequest):
             detail="Agent exceeded maximum iterations. Try a simpler query.",
         )
     except Exception as e:
-        logger.exception(f"Unhandled error: {e}")
+        # Detect LLM errors wrapped by LangChain/LangGraph
+        err_str = str(e).lower()
+        llm_error_signals = [
+            "rate limit", "rate_limit", "429",
+            "connection error", "timeout", "timed out",
+            "openai", "openrouter", "api_connection",
+        ]
+        if any(signal in err_str for signal in llm_error_signals):
+            logger.error("LLM service error (wrapped): %s", e)
+            return QueryResponse(
+                response=(
+                    "The AI service encountered an error. This may be a temporary "
+                    "issue — please try again in a few moments."
+                ),
+                thread_id=req.thread_id,
+                tools_called=[],
+                verification=VerificationInfo(),
+                citations=[],
+                confidence="low",
+            )
+        logger.exception("Unhandled error: %s", e)
         raise HTTPException(status_code=500, detail="Internal error processing query.")
 
 

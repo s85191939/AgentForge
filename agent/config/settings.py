@@ -2,10 +2,36 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger("agentforge.settings")
+
+# ---------------------------------------------------------------------------
+# Production environment detection
+# ---------------------------------------------------------------------------
+
+_PRODUCTION_ENV_MARKERS = (
+    "RAILWAY_ENVIRONMENT",
+    "RAILWAY_SERVICE_NAME",
+    "RAILWAY_PROJECT_ID",
+    "FLY_APP_NAME",
+    "RENDER_SERVICE_ID",
+    "HEROKU_APP_NAME",
+)
+
+
+def _is_production() -> bool:
+    """Return True when running inside a known production platform."""
+    return any(os.getenv(marker) for marker in _PRODUCTION_ENV_MARKERS)
+
+
+def _is_testing() -> bool:
+    """Return True when the testing bypass flag is set."""
+    return os.getenv("AGENTFORGE_TESTING") == "1"
 
 
 class Settings(BaseSettings):
@@ -40,8 +66,13 @@ class Settings(BaseSettings):
     @field_validator("ghostfolio_security_token")
     @classmethod
     def security_token_not_empty(cls, v: str) -> str:
-        # Skip validation during testing
-        if os.getenv("AGENTFORGE_TESTING") == "1":
+        if _is_testing():
+            # BLOCK testing mode in production — hard gate
+            if _is_production():
+                raise ValueError(
+                    "AGENTFORGE_TESTING=1 is FORBIDDEN in production environments. "
+                    "Remove this env var from Railway/Fly/Render/Heroku config."
+                )
             return v
         if not v or v == "your-security-token-here":
             raise ValueError(
@@ -53,8 +84,12 @@ class Settings(BaseSettings):
     @field_validator("openai_api_key")
     @classmethod
     def openai_key_not_empty(cls, v: str) -> str:
-        # Skip validation during testing
-        if os.getenv("AGENTFORGE_TESTING") == "1":
+        if _is_testing():
+            if _is_production():
+                raise ValueError(
+                    "AGENTFORGE_TESTING=1 is FORBIDDEN in production environments. "
+                    "Remove this env var from Railway/Fly/Render/Heroku config."
+                )
             return v
         if not v or v.startswith("your-"):
             raise ValueError("OPENAI_API_KEY must be set in .env.")
@@ -62,3 +97,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Warn loudly at import time if testing flag is active
+if _is_testing():
+    logger.warning(
+        "⚠ AGENTFORGE_TESTING=1 is active — validator shortcuts enabled. "
+        "This must NEVER be set in production."
+    )
