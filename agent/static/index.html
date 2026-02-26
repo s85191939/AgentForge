@@ -662,6 +662,8 @@ async function checkHealth() {
 }
 
 // ===== Sidebar + Ticker =====
+function isUUID(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s); }
+
 async function loadSummary() {
   try {
     const r = await fetch(API + '/api/portfolio-summary');
@@ -693,9 +695,11 @@ async function loadSummary() {
 
     const list = document.getElementById('hlist');
     list.innerHTML = '';
-    holdings.sort((a, b) => (b.allocationInPercentage || 0) - (a.allocationInPercentage || 0));
-    const mx = Math.max(...holdings.map(h => (h.allocationInPercentage || 0) * 100), 1);
-    holdings.forEach((h, i) => {
+    // Filter out UUID holdings (duplicates from manual seed imports)
+    const validHoldings = holdings.filter(h => !isUUID(h.symbol));
+    validHoldings.sort((a, b) => (b.allocationInPercentage || 0) - (a.allocationInPercentage || 0));
+    const mx = Math.max(...validHoldings.map(h => (h.allocationInPercentage || 0) * 100), 1);
+    validHoldings.forEach((h, i) => {
       const pct = (h.allocationInPercentage || 0) * 100;
       const val = (h.valueInBaseCurrency || 0);
       const c = COLORS[i % COLORS.length];
@@ -709,22 +713,25 @@ async function loadSummary() {
       list.appendChild(div);
     });
 
-    buildTicker(holdings);
+    buildTicker(validHoldings);
   } catch(e) { console.warn('Summary error:', e); }
 }
 
 function buildTicker(h) {
   const t = document.getElementById('ticker');
-  if (!h.length) { t.innerHTML = '<span class="t-item"><span class="t-sym">---</span> No data</span>'; return; }
+  // Filter out holdings with UUID symbols (duplicates from manual imports)
+  const filtered = h.filter(x => !isUUID(x.symbol));
+  if (!filtered.length) { t.innerHTML = '<span class="t-item"><span class="t-sym">---</span> No data</span>'; return; }
   let html = '';
   for (let r = 0; r < 3; r++) {
-    h.forEach(x => {
+    filtered.forEach(x => {
+      const label = isUUID(x.symbol) ? (x.name || '???') : x.symbol;
       const price = (x.marketPrice || 0);
       const perf = (x.netPerformancePercent || 0) * 100;
       const perfClass = perf >= 0 ? 'up' : 'down';
       const perfSign = perf >= 0 ? '+' : '';
       html += '<span class="t-item">' +
-        '<span class="t-sym">' + x.symbol + '</span>' +
+        '<span class="t-sym">' + label + '</span>' +
         '<span class="t-val">$' + price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
         '<span class="t-pct ' + perfClass + '">' + perfSign + perf.toFixed(1) + '%</span></span>';
     });
