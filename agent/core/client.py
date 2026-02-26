@@ -184,6 +184,53 @@ class GhostfolioClient:
         return r.json()
 
     # ------------------------------------------------------------------
+    # News (Finnhub-backed, cached in Ghostfolio Postgres)
+    # ------------------------------------------------------------------
+
+    async def get_news(self, symbol: str) -> dict:
+        """GET /api/v1/news?symbol=<symbol>"""
+        r = await self._request(
+            "GET", "/api/v1/news", params={"symbol": symbol}
+        )
+        return r.json()
+
+    async def get_portfolio_news(self) -> dict:
+        """GET /api/v1/news/portfolio"""
+        r = await self._request("GET", "/api/v1/news/portfolio")
+        return r.json()
+
+    async def create_news_alert(
+        self, symbol: str, keywords: str | None = None
+    ) -> dict:
+        """POST /api/v1/news/alerts"""
+        body: dict = {"symbol": symbol}
+        if keywords:
+            body["keywords"] = keywords
+        r = await self._request("POST", "/api/v1/news/alerts", json=body)
+        return r.json()
+
+    async def list_news_alerts(self) -> list:
+        """GET /api/v1/news/alerts"""
+        r = await self._request("GET", "/api/v1/news/alerts")
+        return r.json()
+
+    async def update_news_alert(self, alert_id: str, **kwargs) -> dict:
+        """PATCH /api/v1/news/alerts/:id"""
+        body = {}
+        if "keywords" in kwargs:
+            body["keywords"] = kwargs["keywords"]
+        if "is_active" in kwargs:
+            body["isActive"] = kwargs["is_active"]
+        r = await self._request(
+            "PATCH", f"/api/v1/news/alerts/{alert_id}", json=body
+        )
+        return r.json()
+
+    async def delete_news_alert(self, alert_id: str) -> None:
+        """DELETE /api/v1/news/alerts/:id"""
+        await self._request("DELETE", f"/api/v1/news/alerts/{alert_id}")
+
+    # ------------------------------------------------------------------
     # User
     # ------------------------------------------------------------------
 

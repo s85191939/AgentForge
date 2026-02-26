@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     langchain_api_key: str = ""
     langchain_project: str = "agentforge-finance"
 
+    # Finnhub (financial news — free tier: 60 calls/min)
+    finnhub_api_key: str = ""  # Set in .env or Railway config
+
     # Database (shared Ghostfolio Postgres — for chat persistence)
     database_url: str = ""
 

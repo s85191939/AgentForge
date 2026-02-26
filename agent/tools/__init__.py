@@ -2,6 +2,13 @@
 
 from agent.tools.accounts import get_accounts
 from agent.tools.auth import authenticate, health_check
+from agent.tools.news import (
+    create_news_alert,
+    delete_news_alert,
+    get_portfolio_news,
+    get_symbol_news,
+    list_news_alerts,
+)
 from agent.tools.orders import delete_order, get_orders, import_activities, preview_import
 from agent.tools.portfolio import (
     get_portfolio_details,
@@ -24,6 +31,11 @@ ALL_TOOLS = [
     get_accounts,
     lookup_symbol,
     get_user_settings,
+    get_portfolio_news,
+    get_symbol_news,
+    create_news_alert,
+    list_news_alerts,
+    delete_news_alert,
 ]
 
 __all__ = ["ALL_TOOLS"]
