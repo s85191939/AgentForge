@@ -177,6 +177,27 @@ async def health():
     }
 
 
+@app.get("/debug/news/{symbol}")
+async def debug_news(symbol: str):
+    """Debug endpoint: test Ghostfolio news endpoint directly."""
+    try:
+        client = get_client()
+        headers = await client._get_headers()
+        r = await client._http.request(
+            "GET",
+            "/api/v1/news",
+            headers=headers,
+            params={"symbol": symbol},
+        )
+        return {
+            "status_code": r.status_code,
+            "body": r.text[:2000],
+            "ghostfolio_url": client.base_url,
+        }
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+
+
 # ---------------------------------------------------------------------------
 # Thread Management API
 # ---------------------------------------------------------------------------
