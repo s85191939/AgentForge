@@ -157,6 +157,10 @@ class GhostfolioClient:
         )
         return r.json()
 
+    async def delete_order(self, order_id: str) -> None:
+        """DELETE /api/v1/order/:id — remove a single activity/order."""
+        await self._request("DELETE", f"/api/v1/order/{order_id}")
+
     # ------------------------------------------------------------------
     # Accounts
     # ------------------------------------------------------------------

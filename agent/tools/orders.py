@@ -1,13 +1,24 @@
-"""Transaction / activity tools — read, preview, and import orders."""
+"""Transaction / activity tools — read, preview, import, and delete orders."""
 
 from __future__ import annotations
 
 import json
+import logging
 
 from langchain_core.tools import tool
 
-from agent.core.validators import validate_json_payload
+from agent.core.validators import sanitize_string, validate_json_payload
 from agent.tools.auth import get_client
+
+logger = logging.getLogger("agentforge.tools.orders")
+
+# Known trading currencies for popular tickers (extend as needed)
+_SYMBOL_CURRENCIES: dict[str, str] = {
+    "AAPL": "USD", "MSFT": "USD", "GOOGL": "USD", "AMZN": "USD",
+    "NVDA": "USD", "TSLA": "USD", "META": "USD", "BRK.B": "USD",
+    "VTI": "USD", "VOO": "USD", "SPY": "USD", "QQQ": "USD",
+    "BND": "USD", "VXUS": "USD", "IVV": "USD", "AGG": "USD",
+}
 
 
 @tool
@@ -30,15 +41,21 @@ async def get_orders() -> str:
 
     summary_lines: list[str] = []
     for o in orders if isinstance(orders, list) else [orders]:
+        order_id = o.get("id", "N/A")
         date = o.get("date", "N/A")[:10]
         type_ = o.get("type", "N/A")
         symbol = o.get("SymbolProfile", {}).get("symbol", o.get("symbol", "N/A"))
         qty = o.get("quantity", "N/A")
         price = o.get("unitPrice", "N/A")
         currency = o.get("SymbolProfile", {}).get("currency", o.get("currency", ""))
+        txn_currency = o.get("currency", "")
         fee = o.get("fee", 0)
+        currency_note = ""
+        if txn_currency and txn_currency != currency:
+            currency_note = f" [TXN CURRENCY: {txn_currency}]"
         summary_lines.append(
-            f"- {date} | {type_:>8} | {symbol:<8} | Qty: {qty} @ {currency} {price} | Fee: {fee}"
+            f"- ID: {order_id} | {date} | {type_:>8} | {symbol:<8} "
+            f"| Qty: {qty} @ {currency} {price} | Fee: {fee}{currency_note}"
         )
 
     return (
@@ -90,18 +107,38 @@ async def preview_import(activities_json: str) -> str:
 
     assert activities is not None
     lines: list[str] = []
+    warnings: list[str] = []
     for i, act in enumerate(activities):
+        symbol = act["symbol"].upper()
+        currency = act["currency"].upper()
         lines.append(
-            f"  {i + 1}. {act['type']} {act['quantity']} {act['symbol']} "
-            f"@ {act['currency']} {act['unitPrice']} on {act['date'][:10]} "
+            f"  {i + 1}. {act['type']} {act['quantity']} {symbol} "
+            f"@ {currency} {act['unitPrice']} on {act['date'][:10]} "
             f"(fee: {act['fee']}, source: {act['dataSource']})"
         )
+        # Currency mismatch check — prevents Ghostfolio 500 errors
+        expected = _SYMBOL_CURRENCIES.get(symbol)
+        if expected and currency != expected:
+            warnings.append(
+                f"  WARNING: {symbol} normally trades in {expected}, but you "
+                f"specified {currency}. This WILL cause portfolio calculation "
+                f"errors in Ghostfolio. Please use {expected} instead."
+            )
 
-    return (
+    result = (
         f"Import Preview — {len(activities)} activit{'y' if len(activities) == 1 else 'ies'}:\n"
         + "\n".join(lines)
-        + "\n\nAsk the user to confirm before calling import_activities with confirmed=True."
     )
+    if warnings:
+        result += "\n\n CURRENCY MISMATCH DETECTED:\n" + "\n".join(warnings)
+        result += "\n\nDo NOT proceed with this import. Ask the user to correct the currency."
+    else:
+        result += (
+            "\n\nAsk the user to confirm before calling "
+            "import_activities with confirmed=True."
+        )
+
+    return result
 
 
 @tool
@@ -141,3 +178,38 @@ async def import_activities(activities_json: str, confirmed: bool = False) -> st
     await client.import_activities(activities)
     count = len(activities)
     return f"Successfully imported {count} activit{'y' if count == 1 else 'ies'}."
+
+
+@tool
+async def delete_order(order_id: str, confirmed: bool = False) -> str:
+    """Delete a single transaction/activity from Ghostfolio by its ID.
+
+    Args:
+        order_id: The UUID of the order/activity to delete.
+            Get order IDs from the get_orders tool output.
+        confirmed: Must be True to execute. Set to True only AFTER the user
+            has reviewed which order will be deleted and explicitly approved.
+
+    IMPORTANT: Always show the user which transaction will be deleted
+    (using get_orders to find it) and get explicit confirmation before
+    calling this with confirmed=True.
+    """
+    if not confirmed:
+        return (
+            "Deletion NOT executed — confirmed must be True. "
+            "Please show the user which transaction will be deleted "
+            "and only call delete_order with confirmed=True after they approve."
+        )
+
+    try:
+        order_id = sanitize_string(order_id, max_length=100, field_name="order ID")
+    except ValueError as e:
+        return f"Invalid order ID: {e}"
+
+    client = get_client()
+    try:
+        await client.delete_order(order_id)
+        return f"Successfully deleted order {order_id}."
+    except Exception as e:
+        logger.error("Failed to delete order %s: %s", order_id, e)
+        return f"Failed to delete order: {e}"
