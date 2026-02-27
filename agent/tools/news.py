@@ -203,7 +203,7 @@ async def update_news_alert(alert_id: str, keywords: str = "", is_active: bool =
 
     client = get_client()
     try:
-        result = await client.update_news_alert(
+        await client.update_news_alert(
             alert_id,
             keywords=keywords if keywords else None,
             is_active=is_active,
