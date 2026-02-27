@@ -29,6 +29,13 @@ TOOL_SOURCE_LABELS: dict[str, str] = {
     "import_activities": "Activity Import (Ghostfolio)",
     "authenticate": "Authentication (Ghostfolio)",
     "health_check": "Health Check (Ghostfolio)",
+    "delete_order": "Order Deletion (Ghostfolio)",
+    "get_portfolio_news": "Portfolio News (Finnhub via Ghostfolio)",
+    "get_symbol_news": "Symbol News (Finnhub via Ghostfolio)",
+    "create_news_alert": "News Alert Creation (Ghostfolio)",
+    "list_news_alerts": "News Alerts (Ghostfolio)",
+    "delete_news_alert": "News Alert Deletion (Ghostfolio)",
+    "update_news_alert": "News Alert Update (Ghostfolio)",
 }
 
 

@@ -8,6 +8,7 @@ from agent.tools.news import (
     get_portfolio_news,
     get_symbol_news,
     list_news_alerts,
+    update_news_alert,
 )
 from agent.tools.orders import delete_order, get_orders, import_activities, preview_import
 from agent.tools.portfolio import (
@@ -35,6 +36,7 @@ ALL_TOOLS = [
     get_symbol_news,
     create_news_alert,
     list_news_alerts,
+    update_news_alert,
     delete_news_alert,
 ]
 

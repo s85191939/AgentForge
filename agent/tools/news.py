@@ -181,6 +181,45 @@ async def list_news_alerts() -> str:
 
 
 @tool
+async def update_news_alert(alert_id: str, keywords: str = "", is_active: bool = True) -> str:
+    """Update an existing news alert (change keywords or pause/resume).
+
+    Args:
+        alert_id: The UUID of the alert to update.
+            Get alert IDs from the list_news_alerts tool.
+        keywords: New comma-separated keywords to filter
+            (e.g., "earnings,dividend"). Pass empty string to clear keywords.
+        is_active: Set to False to pause the alert, True to resume.
+
+    Use this when the user wants to modify an existing alert's keywords
+    or pause/resume monitoring.
+    """
+    try:
+        alert_id = sanitize_string(
+            alert_id, max_length=100, field_name="alert ID"
+        )
+    except ValueError as e:
+        return f"Invalid alert ID: {e}"
+
+    client = get_client()
+    try:
+        result = await client.update_news_alert(
+            alert_id,
+            keywords=keywords if keywords else None,
+            is_active=is_active,
+        )
+        status = "active" if is_active else "paused"
+        return (
+            f"News alert {alert_id} updated successfully. "
+            f"Status: {status}"
+            f"{f', keywords: {keywords}' if keywords else ''}"
+        )
+    except Exception as e:
+        logger.error("Failed to update alert %s: %s", alert_id, e)
+        return f"Failed to update alert: {e}"
+
+
+@tool
 async def delete_news_alert(alert_id: str) -> str:
     """Delete a news alert by its ID.
 

@@ -1,6 +1,37 @@
 version: "3.9"
 
 services:
+  agentforge:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: agentforge
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      GHOSTFOLIO_BASE_URL: http://ghostfolio:3333
+      GHOSTFOLIO_SECURITY_TOKEN: ${GHOSTFOLIO_SECURITY_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-agentforge-finance}
+    depends_on:
+      ghostfolio:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
   ghostfolio:
     image: ghostfolio/ghostfolio:latest
     container_name: ghostfolio

@@ -9,8 +9,9 @@ import respx
 from agent.core.client import GhostfolioClient
 from agent.tools.accounts import get_accounts
 from agent.tools.auth import set_client
-from agent.tools.orders import get_orders, import_activities, preview_import
+from agent.tools.orders import delete_order, get_orders, import_activities, preview_import
 from agent.tools.portfolio import (
+    get_portfolio_details,
     get_portfolio_holdings,
     get_portfolio_performance,
 )
@@ -311,3 +312,105 @@ async def test_import_activities_confirmed(setup_client):
         "confirmed": True,
     })
     assert "Successfully imported" in result
+
+
+# ---------------------------------------------------------------
+# delete_order tool tests
+# ---------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_delete_order_requires_confirmation():
+    """delete_order refuses to execute without confirmed=True."""
+    result = await delete_order.ainvoke({
+        "order_id": "some-uuid-123",
+        "confirmed": False,
+    })
+    assert "NOT executed" in result
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_order_confirmed(setup_client):
+    """delete_order executes when confirmed=True."""
+    respx.post("http://localhost:3333/api/v1/auth/anonymous").mock(
+        return_value=httpx.Response(200, json={"authToken": "jwt-test"})
+    )
+    await setup_client.authenticate()
+
+    respx.delete("http://localhost:3333/api/v1/order/order-uuid-123").mock(
+        return_value=httpx.Response(204)
+    )
+
+    result = await delete_order.ainvoke({
+        "order_id": "order-uuid-123",
+        "confirmed": True,
+    })
+    assert "Successfully deleted" in result
+    assert "order-uuid-123" in result
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_order_api_failure(setup_client):
+    """delete_order returns error message on API failure."""
+    respx.post("http://localhost:3333/api/v1/auth/anonymous").mock(
+        return_value=httpx.Response(200, json={"authToken": "jwt-test"})
+    )
+    await setup_client.authenticate()
+
+    respx.delete("http://localhost:3333/api/v1/order/bad-id").mock(
+        return_value=httpx.Response(404)
+    )
+
+    result = await delete_order.ainvoke({
+        "order_id": "bad-id",
+        "confirmed": True,
+    })
+    assert "Failed to delete" in result
+
+
+# ---------------------------------------------------------------
+# get_portfolio_details tool tests
+# ---------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_portfolio_details_tool(setup_client):
+    """get_portfolio_details returns detailed breakdown."""
+    respx.post("http://localhost:3333/api/v1/auth/anonymous").mock(
+        return_value=httpx.Response(200, json={"authToken": "jwt-test"})
+    )
+    await setup_client.authenticate()
+
+    mock_details = {
+        "holdings": [
+            {
+                "symbol": "AAPL",
+                "name": "Apple Inc",
+                "allocationInPercentage": 0.5,
+                "assetClass": "EQUITY",
+                "sectors": [{"name": "Technology", "weight": 1.0}],
+                "countries": [{"code": "US", "weight": 1.0}],
+            }
+        ],
+        "summary": {
+            "cash": 5000,
+            "committedFunds": 0,
+        },
+    }
+    respx.get("http://localhost:3333/api/v1/portfolio/details").mock(
+        return_value=httpx.Response(200, json=mock_details)
+    )
+
+    result = await get_portfolio_details.ainvoke({"range": "max"})
+    assert "Portfolio Details" in result
+    assert "AAPL" in result
+
+
+@pytest.mark.asyncio
+async def test_get_portfolio_details_invalid_range():
+    """get_portfolio_details returns error on invalid range."""
+    result = await get_portfolio_details.ainvoke({"range": "invalid"})
+    assert "Invalid range" in result
