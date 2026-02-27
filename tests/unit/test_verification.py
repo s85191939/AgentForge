@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from agent.core.verification import (
     DISCLAIMER,
     VerificationResult,
@@ -13,7 +11,6 @@ from agent.core.verification import (
     check_tool_data_completeness,
     verify_response,
 )
-
 
 # ---------------------------------------------------------------------------
 # Prohibited advice checks

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from agent.core.formatter import (
     TOOL_SOURCE_LABELS,
     FormattedResponse,
@@ -11,7 +9,6 @@ from agent.core.formatter import (
     estimate_confidence,
     format_response,
 )
-
 
 # ---------------------------------------------------------------------------
 # TOOL_SOURCE_LABELS completeness
