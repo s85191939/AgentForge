@@ -120,7 +120,7 @@ All endpoints are JWT-authenticated and user-scoped.
 | File | Purpose |
 |------|---------|
 | `agent/core/client.py` | 6 new HTTP client methods |
-| `agent/tools/news.py` | 5 LangChain tools |
+| `agent/tools/news.py` | 6 LangChain tools (including update_news_alert) |
 | `agent/tools/__init__.py` | Register news tools |
 | `agent/config/settings.py` | Finnhub API key setting |
 | `BOUNTY.md` | This file |

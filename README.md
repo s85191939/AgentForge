@@ -85,7 +85,7 @@ The agent runs as a **separate service** that communicates with Ghostfolio via i
 |---|---|
 | **Deployment** | [Railway](https://railway.app) (4 services: Agent, Ghostfolio, PostgreSQL, Redis) |
 | **Containerization** | Docker (Dockerfile for agent, Docker Compose for local dev) |
-| **CI/Testing** | pytest + pytest-asyncio + respx (19 unit tests) |
+| **CI/Testing** | pytest + pytest-asyncio + respx (116 unit tests) |
 
 ### Why LangChain + LangGraph?
 
@@ -190,9 +190,16 @@ curl -X POST https://lovely-vitality-production-fdc1.up.railway.app/query \
 | `get_orders` | List transaction history | Read |
 | `preview_import` | Preview activities before importing | Read |
 | `import_activities` | Import activities (requires `confirmed=True`) | Write |
+| `delete_order` | Delete a transaction (requires `confirmed=True`) | Write |
 | `get_accounts` | List investment accounts | Read |
 | `lookup_symbol` | Search for stock/ETF symbols | Read |
 | `get_user_settings` | Get user preferences | Read |
+| `get_portfolio_news` | Get news for all portfolio holdings (Finnhub) | Read |
+| `get_symbol_news` | Get news for a specific ticker symbol (Finnhub) | Read |
+| `create_news_alert` | Create a persistent news alert for a symbol | Write |
+| `list_news_alerts` | List all active news alerts | Read |
+| `update_news_alert` | Update alert keywords or pause/resume | Write |
+| `delete_news_alert` | Delete a news alert by ID | Write |
 
 ## Key Features
 
@@ -287,7 +294,7 @@ Structured JSON response designed for AI agent consumption:
 ## Testing
 
 ```bash
-# Run all unit tests (19 tests)
+# Run all unit tests (116 tests)
 source .venv/bin/activate
 python -m pytest tests/unit -v
 
@@ -323,19 +330,20 @@ AgentForge/
 │   │   ├── verification.py    # Domain-specific response verification
 │   │   └── formatter.py       # Output formatter (citations + confidence)
 │   ├── tools/
-│   │   ├── __init__.py        # ALL_TOOLS export (11 tools)
+│   │   ├── __init__.py        # ALL_TOOLS export (18 tools)
 │   │   ├── auth.py            # authenticate, health_check
 │   │   ├── portfolio.py       # holdings, performance, details
-│   │   ├── orders.py          # get_orders, preview_import, import_activities
+│   │   ├── orders.py          # get_orders, preview_import, import_activities, delete_order
 │   │   ├── accounts.py        # get_accounts
 │   │   ├── symbols.py         # lookup_symbol
-│   │   └── user.py            # get_user_settings
+│   │   ├── user.py            # get_user_settings
+│   │   └── news.py            # portfolio/symbol news, alert CRUD (Finnhub)
 │   ├── static/
 │   │   └── index.html         # Chat web UI (debug panel, ticker, threads)
 │   ├── main.py                # FastAPI server
 │   └── cli.py                 # Interactive CLI
 ├── tests/
-│   ├── unit/                  # 19 unit tests (mocked API)
+│   ├── unit/                  # 116 unit tests (mocked API)
 │   ├── integration/           # E2E tests (live Ghostfolio)
 │   └── eval/
 │       └── run_eval.py        # Eval runner (binary checks + coverage matrix)
@@ -345,7 +353,7 @@ AgentForge/
 ├── scripts/
 │   └── seed_data.py           # Seed demo portfolio (9 transactions)
 ├── docker/
-│   └── docker-compose.yml     # Ghostfolio + PostgreSQL + Redis
+│   └── docker-compose.yml     # AgentForge + Ghostfolio + PostgreSQL + Redis
 ├── Dockerfile                 # Agent service container
 ├── railway.toml               # Railway deployment config
 └── pyproject.toml             # Python project config
